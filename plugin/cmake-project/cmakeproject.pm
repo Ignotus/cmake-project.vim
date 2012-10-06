@@ -6,10 +6,6 @@ use Cwd;
 sub cmake_project_files {
     my $dir = shift;
 
-    my @builds = File::Find::Rule->file()
-                                    ->name("build.make")
-                                    ->in($dir);
-
     my @dependencies = File::Find::Rule->file()
                                     ->name("DependInfo.cmake")
                                     ->in($dir);
@@ -22,29 +18,7 @@ sub cmake_project_files {
         close(FILE);
     }
 
-    foreach my $filename(@builds) {
-        open(FILE, $filename);
-        my @data = <FILE>;
-        push(@accum, header_files(\@data));
-        close(FILE);
-    }
-
-    my @string = ();
-    foreach my $pair(@accum) {
-        push(@string, "$pair->{'dir'}/$pair->{'file'}");
-    }
-    return @string;
-}
-
-sub header_files {
-     my @result = ();
-    foreach my $line(@{(shift)}) {
-        if ($line =~ m/((([a-zA-Z_\/]+)\/)?[a-zA-Z_]+\.(h|hpp)):.*/) {
-            push(@result, { 'dir' => getcwd . "/" . $dir, 'file' => $1});
-        }
-    }
-    return @result;
-   
+    return @accum;
 }
 
 sub src_files {
