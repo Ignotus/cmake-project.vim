@@ -3,8 +3,34 @@ if !has('perl')
   finish
 endif
 
+if !exists('g:cmake_project_build_dir')
+  let g:cmake_project_build_dir = "build"
+endif
+
 autocmd CursorMoved * call s:cmake_project_cursor_moved() 
 command -nargs=0 -bar CMakePro call s:cmake_project_window()
+"command -nargs=+ -bar CMake call s:cmake_project_cmake(srcdir, arg)
+command -nargs=1 -bar CMake call s:cmake_project_cmake(<f-args>)
+
+function! s:cmake_project_cmake(srcdir)
+  if !isdirectory(a:srcdir)
+    echo "This directory not exists!" . a:srcdir
+    return
+  endif
+  
+  let s:cmake_project_dir = a:srcdir
+
+  exec "cd" a:srcdir
+  if !isdirectory(g:cmake_project_build_dir)
+    call mkdir(g:cmake_project_build_dir)
+  endif
+  
+  cd build
+
+  exec "!cmake" "../"
+  cd ..
+  call s:cmake_project_window()
+endfunction
 
 function! s:cmake_project_window()
   vnew
@@ -17,7 +43,8 @@ perl << EOF
   use lib "$ENV{'HOME'}/.vim/plugin/cmake-project";
   use cmakeproject;
 
-  my @result = cmakeproject::cmake_project_files('build');
+  my $dir = VIM::Eval('g:cmake_project_build_dir');
+  my @result = cmakeproject::cmake_project_files($dir);
 
   foreach $line(@result) {
     $filename = $line->{'file'}; 
