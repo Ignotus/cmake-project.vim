@@ -14,7 +14,7 @@ function! s:cmake_project_window()
   let s:cmake_project_bufname = bufname("%")
   let g:filedict = {}
 perl << EOF
-  use lib './cmake-project';
+  use lib "$ENV{'HOME'}/.vim/plugin/cmake-project";
   use cmakeproject;
 
   my @result = cmakeproject::cmake_project_files('build');
