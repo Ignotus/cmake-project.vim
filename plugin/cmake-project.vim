@@ -1,5 +1,5 @@
 " vim-cmake-project
-" Copyright (C) 2012 Minh Ngo
+" Copyright (C) 2012 Minh Ngo <nlminhtl@gmail.com>
 "
 " Permission is hereby granted, free of charge, to any person obtaining a
 " copy of this software and associated documentation files (the "Software"),
@@ -67,10 +67,15 @@ perl << EOF
   my @result = cmakeproject::cmake_project_files($dir);
 
   foreach $line(@result) {
-    $filename = $line->{'file'}; 
-    $curbuf->Append(0, $filename);
-    VIM::DoCommand("let g:filedict[\"$filename\"] = \"$line->{'dir'}\"");
+    $filename = $line->{'file'};
+    $full = $line->{'dir'} . "/" . $filename;
+    if (-e $full) {
+      $curbuf->Append(0, $filename);
+      VIM::DoCommand("let g:filedict[\"$filename\"] = \"$line->{'dir'}\"");
+    }
+
   }
+  $curbuf->Delete($curbuf->Count());
 EOF
 endfunction
 
