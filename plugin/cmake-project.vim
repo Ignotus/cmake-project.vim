@@ -104,19 +104,21 @@ endfunction
 
 function! s:cmake_project_print_bar(tree, level)
   for pair in items(a:tree)
-    let name = s:cmake_project_indent(a:level) . pair[0]
     if type(pair[1]) == type({})
+      let name = s:cmake_project_indent(a:level) . "-" . pair[0]
+
       call append(line('$'), name . "/")
       let newlevel = a:level + 1
       call s:cmake_project_print_bar(pair[1], newlevel)
     else
+      let name = s:cmake_project_indent(a:level) . pair[0]
       call append(line('$'), name) 
     endif
   endfor
 endfunction
 
 function! s:cmake_project_level(str)
-  let ident_level = match(a:str, '[_a-zA-Z]')
+  let ident_level = match(a:str, '[\+\-_a-zA-Z]')
   return ident_level / 2
 endfunction
 
@@ -145,8 +147,13 @@ endfunction
 
 function! s:cmake_project_cursor_moved()
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
+
     let cmake_project_filename = getline('.')
     let l:fullpath = s:cmake_project_var(cmake_project_filename)
+    let highlight_pattern = substitute(l:fullpath, '[.]', '\\.', '')
+    let highlight_pattern = substitute(highlight_pattern, '[/]', '\\/', '')
+    exec "match" "ErrorMsg /" . highlight_pattern . "/"
+
     let l:level = s:cmake_project_level(cmake_project_filename)
     
     let l:level -= 1
