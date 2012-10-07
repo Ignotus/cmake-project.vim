@@ -58,7 +58,6 @@ function! s:cmake_project_window()
   buffer CMakeProject
   setlocal buftype=nofile
   let s:cmake_project_bufname = bufname("%")
-  let g:filedict = {}
 perl << EOF
   use lib "$ENV{'HOME'}/.vim/plugin/cmake-project";
   use cmakeproject;
@@ -66,31 +65,96 @@ perl << EOF
   my $dir = VIM::Eval('g:cmake_project_build_dir');
   my @result = cmakeproject::cmake_project_files($dir);
 
-  foreach $line(@result) {
-    $filename = $line->{'file'};
-    $full = $line->{'dir'} . "/" . $filename;
-    if (-e $full) {
-      $curbuf->Append(0, $filename);
-      VIM::DoCommand("let g:filedict[\"$filename\"] = \"$line->{'dir'}\"");
+  VIM::DoCommand("let s:cmake_project_files = []");
+  foreach $filename(@result) {
+    if (-e $filename) {
+      VIM::DoCommand("call insert(s:cmake_project_files, \'$filename\')");
     }
-
   }
-  $curbuf->Delete($curbuf->Count());
 EOF
+  let s:cmake_project_file_tree = {}
+  
+  for fullpath in s:cmake_project_files
+    let l:current_tree = s:cmake_project_file_tree
+    let l:cmake_project_args = split(fullpath, '\/')
+    let filename = remove(l:cmake_project_args, -1)
+    for path in l:cmake_project_args
+      if !has_key(l:current_tree, path)
+        let l:current_tree[path] = {}
+      endif
+
+      let l:current_tree = l:current_tree[path]
+    endfor
+
+    let l:current_tree[filename] = 1
+  endfor
+   
+  call s:cmake_project_print_bar(s:cmake_project_file_tree, 0)
+  delete 1
+endfunction
+
+function! s:cmake_project_indent(level)
+  let result = ""
+  for i in range(1, a:level)
+    let result .= "  "
+  endfor
+
+  return result
+endfunction
+
+function! s:cmake_project_print_bar(tree, level)
+  for pair in items(a:tree)
+    if type(pair[1]) == type({})
+      call append(line('$'), s:cmake_project_indent(a:level) . pair[0] . "/")
+      let newlevel = a:level + 1
+      call s:cmake_project_print_bar(pair[1], newlevel)
+    else
+      call append(line('$'), s:cmake_project_indent(a:level) . pair[0]) 
+    endif
+  endfor
+endfunction
+
+function! s:cmake_project_var(str)
+  let ident_level = match(a:str, ' [_a-zA-Z]')
+  let filename = a:str[ident_level + 1 :]
+  return [ident_level / 2, filename]
+endfunction
+
+function! s:cmake_project_find_parent(ident_level)
+  let finding_line = line('.')
+  while finding_line > 0
+    let l = line(finding_line)
+    let level = match(l, ' [_a-zA-Z]') / 2
+    if level == a:ident_level
+      return [finding_line, l[level * 2 + 1:]]
+    endif
+    let finding_line -= 1
+  endwhile
+  return [-1, -1]
 endfunction
 
 function! s:cmake_project_cursor_moved()
-  if exists('s:cmake_project_bufname') && bufname("%") == s:cmake_project_bufname
+  if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
     let cmake_project_filename = getline('.')
-    let cmake_project_full_file_name = g:filedict[cmake_project_filename] . "/" . cmake_project_filename
+    let [l:ident_level, l:filename] = s:cmake_project_var(cmake_project_filename)
+   
+    let fullpath = l:filename
+
+    let [finding_line, level] = s:cmake_project_find_parent(ident_level - 1)
+    while level > -1
+      let [current_ident, path] = s:cmake_project_var(line(finding_line))
+      let fullpath = path . fullpath
+      let [finding_line, level] = s:cmake_project_find_parent(ident_level - 1)
+    endwhile
+
+    let fullpath = "/" . fullpath
  
-    if filereadable(cmake_project_full_file_name)
+    if filereadable(fullpath)
       wincmd l
-      exec "e" cmake_project_full_file_name 
+      exec 'e' fullpath
       wincmd h
     else
-      echo "Cannot read: " cmake_project_full_file_name
+      echo 'Cannot read: ' fullpath
     endif
   endif
 endfunction
-
