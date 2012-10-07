@@ -114,47 +114,57 @@ function! s:cmake_project_print_bar(tree, level)
   endfor
 endfunction
 
-function! s:cmake_project_var(str)
-  let ident_level = match(a:str, ' [_a-zA-Z]')
-  let filename = a:str[ident_level + 1 :]
-  return [ident_level / 2, filename]
+function! s:cmake_project_level(str)
+  let ident_level = match(a:str, '[_a-zA-Z]')
+  return ident_level / 2
 endfunction
 
-function! s:cmake_project_find_parent(ident_level)
-  let finding_line = line('.')
-  while finding_line > 0
-    let l = line(finding_line)
-    let level = match(l, ' [_a-zA-Z]') / 2
+function! s:cmake_project_var(str)
+  let ident_level = match(a:str, '[_a-zA-Z]')
+  let filename = a:str[ident_level :]
+  return filename
+endfunction
+
+function! s:cmake_project_find_parent(ident_level, finding_line)
+  if a:finding_line == 1
+    return -1
+  endif
+
+  let fline = a:finding_line - 1
+  while fline > 0
+    let l = getline(fline)
+    let level = s:cmake_project_level(l)
     if level == a:ident_level
-      return [finding_line, l[level * 2 + 1:]]
+      return fline
     endif
-    let finding_line -= 1
+    let fline -= 1
   endwhile
-  return [-1, -1]
+  return -1
 endfunction
 
 function! s:cmake_project_cursor_moved()
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
     let cmake_project_filename = getline('.')
-    let [l:ident_level, l:filename] = s:cmake_project_var(cmake_project_filename)
-   
-    let fullpath = l:filename
-
-    let [finding_line, level] = s:cmake_project_find_parent(ident_level - 1)
-    while level > -1
-      let [current_ident, path] = s:cmake_project_var(line(finding_line))
-      let fullpath = path . fullpath
-      let [finding_line, level] = s:cmake_project_find_parent(ident_level - 1)
+    let l:fullpath = s:cmake_project_var(cmake_project_filename)
+    let l:level = s:cmake_project_level(cmake_project_filename)
+    
+    let l:level -= 1
+    let l:finding_line = s:cmake_project_find_parent(l:level, line('.'))
+    while l:level > -1
+      let l:path = s:cmake_project_var(getline(l:finding_line))
+      let l:fullpath = l:path . l:fullpath
+      let l:level -= 1
+      let l:finding_line = s:cmake_project_find_parent(l:level, l:finding_line)
     endwhile
 
-    let fullpath = "/" . fullpath
- 
-    if filereadable(fullpath)
+    let l:fullpath = "/" . l:fullpath
+    if filereadable(l:fullpath)
       wincmd l
-      exec 'e' fullpath
+      exec 'e' l:fullpath
       wincmd h
-    else
-      echo 'Cannot read: ' fullpath
+    "else
+      "echo 'Cannot read: ' l:fullpath
+
     endif
   endif
 endfunction
