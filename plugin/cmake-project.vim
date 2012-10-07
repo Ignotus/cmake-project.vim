@@ -75,18 +75,18 @@ EOF
   let s:cmake_project_file_tree = {}
   
   for fullpath in s:cmake_project_files
-    let l:current_tree = s:cmake_project_file_tree
-    let l:cmake_project_args = split(fullpath, '\/')
-    let filename = remove(l:cmake_project_args, -1)
-    for path in l:cmake_project_args
-      if !has_key(l:current_tree, path)
-        let l:current_tree[path] = {}
+    let current_tree = s:cmake_project_file_tree
+    let cmake_project_args = split(fullpath, '\/')
+    let filename = remove(cmake_project_args, -1)
+    for path in cmake_project_args
+      if !has_key(current_tree, path)
+        let current_tree[path] = {}
       endif
 
-      let l:current_tree = l:current_tree[path]
+      let current_tree = current_tree[path]
     endfor
 
-    let l:current_tree[filename] = 1
+    let current_tree[filename] = 1
   endfor
    
   call s:cmake_project_print_bar(s:cmake_project_file_tree, 0)
@@ -149,26 +149,26 @@ function! s:cmake_project_cursor_moved()
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
 
     let cmake_project_filename = getline('.')
-    let l:fullpath = s:cmake_project_var(cmake_project_filename)
-    let highlight_pattern = substitute(l:fullpath, '[.]', '\\.', '')
+    let fullpath = s:cmake_project_var(cmake_project_filename)
+    let highlight_pattern = substitute(fullpath, '[.]', '\\.', '')
     let highlight_pattern = substitute(highlight_pattern, '[/]', '\\/', '')
     exec "match" "ErrorMsg /" . highlight_pattern . "/"
 
-    let l:level = s:cmake_project_level(cmake_project_filename)
+    let level = s:cmake_project_level(cmake_project_filename)
     
-    let l:level -= 1
-    let l:finding_line = s:cmake_project_find_parent(l:level, line('.'))
-    while l:level > -1
-      let l:path = s:cmake_project_var(getline(l:finding_line))
-      let l:fullpath = l:path . l:fullpath
-      let l:level -= 1
-      let l:finding_line = s:cmake_project_find_parent(l:level, l:finding_line)
+    let level -= 1
+    let finding_line = s:cmake_project_find_parent(level, line('.'))
+    while level > -1
+      let path = s:cmake_project_var(getline(finding_line))
+      let fullpath = path . fullpath
+      let level -= 1
+      let finding_line = s:cmake_project_find_parent(level, finding_line)
     endwhile
 
-    let l:fullpath = "/" . l:fullpath
-    if filereadable(l:fullpath)
+    let fullpath = "/" . fullpath
+    if filereadable(fullpath)
       wincmd l
-      exec 'e' l:fullpath
+      exec 'e' fullpath
       setf cpp
     endif
   endif
