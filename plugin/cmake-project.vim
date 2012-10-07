@@ -169,10 +169,7 @@ function! s:cmake_project_cursor_moved()
     if filereadable(l:fullpath)
       wincmd l
       exec 'e' l:fullpath
-      wincmd h
-    "else
-      "echo 'Cannot read: ' l:fullpath
-
+      setf cpp
     endif
   endif
 endfunction
