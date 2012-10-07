@@ -104,12 +104,13 @@ endfunction
 
 function! s:cmake_project_print_bar(tree, level)
   for pair in items(a:tree)
+    let name = s:cmake_project_indent(a:level) . pair[0]
     if type(pair[1]) == type({})
-      call append(line('$'), s:cmake_project_indent(a:level) . pair[0] . "/")
+      call append(line('$'), name . "/")
       let newlevel = a:level + 1
       call s:cmake_project_print_bar(pair[1], newlevel)
     else
-      call append(line('$'), s:cmake_project_indent(a:level) . pair[0]) 
+      call append(line('$'), name) 
     endif
   endfor
 endfunction
