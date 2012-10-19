@@ -20,7 +20,7 @@
 " SOFTWARE.
 
 if !has('perl')
-  echo "Error: perl not found"
+  echo 'Error: perl not found'
   finish
 else
 perl <<EOF
@@ -40,8 +40,15 @@ if !exists('g:cmake_project_build_dir')
 endif
 
 autocmd CursorMoved * call s:cmake_project_cursor_moved() 
+autocmd BufWinLeave * call s:cmake_project_on_hidden()
 command -nargs=0 -bar CMakePro call s:cmake_project_window()
 command -nargs=1 -bar CMake call s:cmake_project_cmake(<f-args>)
+
+function! s:cmake_project_on_hidden()
+  if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
+    unlet s:cmake_project_bufname
+  endif
+endfunction
 
 function! s:cmake_project_cmake(srcdir)
   if !isdirectory(a:srcdir)
@@ -51,29 +58,33 @@ function! s:cmake_project_cmake(srcdir)
   
   let s:cmake_project_dir = a:srcdir
 
-  exec "cd" fnameescape(a:srcdir)
+  exec 'cd' fnameescape(a:srcdir)
   if !isdirectory(g:cmake_project_build_dir)
     call mkdir(g:cmake_project_build_dir)
   endif
   
   cd build
 
-  exec "!cmake" "../"
+  exec '!cmake' '../'
   cd ..
   call s:cmake_project_window()
 endfunction
 
 function! s:cmake_project_window()
+  if exists('s:cmake_project_bufname')
+    return
+  endif
+
   vnew
   badd CMakeProject
   buffer CMakeProject
   setlocal buftype=nofile
-  let s:cmake_project_bufname = bufname("%")
+  let s:cmake_project_bufname = bufname('%')
 perl << EOF
   my $dir = VIM::Eval('g:cmake_project_build_dir');
   my @result = VIM::CMakeProject::cmake_project_files($dir);
 
-  VIM::DoCommand("let s:cmake_project_files = []");
+  VIM::DoCommand('let s:cmake_project_files = []');
   foreach $filename(@result) {
     if (-e $filename) {
       VIM::DoCommand("call insert(s:cmake_project_files, \'$filename\')");
@@ -102,9 +113,9 @@ EOF
 endfunction
 
 function! s:cmake_project_indent(level)
-  let result = ""
+  let result = '' 
   for i in range(1, a:level)
-    let result .= "  "
+    let result .= '  '
   endfor
 
   return result
@@ -113,9 +124,9 @@ endfunction
 function! s:cmake_project_print_bar(tree, level)
   for pair in items(a:tree)
     if type(pair[1]) == type({})
-      let name = s:cmake_project_indent(a:level) . "-" . pair[0]
+      let name = s:cmake_project_indent(a:level) . '-' . pair[0]
 
-      call append(line('$'), name . "/")
+      call append(line('$'), name . '/')
       let newlevel = a:level + 1
       call s:cmake_project_print_bar(pair[1], newlevel)
     else
@@ -173,7 +184,7 @@ function! s:cmake_project_cursor_moved()
       let finding_line = s:cmake_project_find_parent(level, finding_line)
     endwhile
 
-    let fullpath = "/" . fullpath
+    let fullpath = '/' . fullpath
     if filereadable(fullpath)
       wincmd l
       exec 'e' fullpath
