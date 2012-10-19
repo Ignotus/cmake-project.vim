@@ -22,6 +22,17 @@
 if !has('perl')
   echo "Error: perl not found"
   finish
+else
+perl <<EOF
+  BEGIN {
+    use File::Spec;
+    my $rtp = VIM::Eval('&runtimepath');
+    my @path = split /,/, $rtp;
+      unshift @INC, File::Spec->catdir($_, 'perl') foreach @path;
+  }
+  
+  use VIM::CMakeProject;
+EOF
 endif
 
 if !exists('g:cmake_project_build_dir')
@@ -59,11 +70,8 @@ function! s:cmake_project_window()
   setlocal buftype=nofile
   let s:cmake_project_bufname = bufname("%")
 perl << EOF
-  use lib "$ENV{'HOME'}/.vim/plugin/cmake-project";
-  use cmakeproject;
-
   my $dir = VIM::Eval('g:cmake_project_build_dir');
-  my @result = cmakeproject::cmake_project_files($dir);
+  my @result = VIM::CMakeProject::cmake_project_files($dir);
 
   VIM::DoCommand("let s:cmake_project_files = []");
   foreach $filename(@result) {
