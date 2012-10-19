@@ -51,7 +51,7 @@ function! s:cmake_project_cmake(srcdir)
   
   let s:cmake_project_dir = a:srcdir
 
-  exec "cd" a:srcdir
+  exec "cd" fnameescape(a:srcdir)
   if !isdirectory(g:cmake_project_build_dir)
     call mkdir(g:cmake_project_build_dir)
   endif
@@ -168,7 +168,7 @@ function! s:cmake_project_cursor_moved()
     let finding_line = s:cmake_project_find_parent(level, line('.'))
     while level > -1
       let path = s:cmake_project_var(getline(finding_line))
-      let fullpath = path . fullpath
+      let fullpath = fnameescape(path) . fullpath
       let level -= 1
       let finding_line = s:cmake_project_find_parent(level, finding_line)
     endwhile
