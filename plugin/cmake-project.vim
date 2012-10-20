@@ -43,6 +43,20 @@ autocmd CursorMoved * call s:cmake_project_cursor_moved()
 autocmd BufWinLeave * call s:cmake_project_on_hidden()
 command -nargs=0 -bar CMakePro call s:cmake_project_window()
 command -nargs=1 -bar CMake call s:cmake_project_cmake(<f-args>)
+map <Space> :call g:cmake_project_hide_tree()<CR>
+
+function! g:cmake_project_hide_tree()
+  if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
+    let current_line = getline('.')
+    let stat = s:cmake_project_hiding_status(getline('.'))
+    echo stat 
+    if stat == '▼'   
+      s/▼/►/      
+    elseif stat == '►'
+      s/►/▼/
+    endif
+  endif
+endfunction
 
 function! s:cmake_project_on_hidden()
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
@@ -113,7 +127,7 @@ EOF
 endfunction
 
 function! s:cmake_project_indent(level)
-  let result = '' 
+  let result = ''
   for i in range(1, a:level)
     let result .= '  '
   endfor
@@ -124,7 +138,7 @@ endfunction
 function! s:cmake_project_print_bar(tree, level)
   for pair in items(a:tree)
     if type(pair[1]) == type({})
-      let name = s:cmake_project_indent(a:level) . '-' . pair[0]
+      let name = s:cmake_project_indent(a:level) . '▼' . pair[0]
 
       call append(line('$'), name . '/')
       let newlevel = a:level + 1
@@ -137,8 +151,12 @@ function! s:cmake_project_print_bar(tree, level)
 endfunction
 
 function! s:cmake_project_level(str)
-  let ident_level = match(a:str, '[\+\-_a-zA-Z]')
+  let ident_level = match(a:str, '[▼►_a-zA-Z]')
   return ident_level / 2
+endfunction
+      
+function! s:cmake_project_hiding_status(str)
+ return matchstr(a:str, '[►▼]')
 endfunction
 
 function! s:cmake_project_var(str)
@@ -146,6 +164,7 @@ function! s:cmake_project_var(str)
   let filename = a:str[ident_level :]
   return filename
 endfunction
+
 
 function! s:cmake_project_find_parent(ident_level, finding_line)
   if a:finding_line == 1
@@ -164,14 +183,17 @@ function! s:cmake_project_find_parent(ident_level, finding_line)
   return -1
 endfunction
 
+function! s:cmake_project_highlight_pattern(path)
+  let highlight_pattern = substitute(a:path, '[.]', '\\.', '')
+  let highlight_pattern = substitute(highlight_pattern, '[/]', '\\/', '')
+  exec "match" "ErrorMsg /" . highlight_pattern . "/"
+endfunction
+
 function! s:cmake_project_cursor_moved()
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
-
     let cmake_project_filename = getline('.')
     let fullpath = s:cmake_project_var(cmake_project_filename)
-    let highlight_pattern = substitute(fullpath, '[.]', '\\.', '')
-    let highlight_pattern = substitute(highlight_pattern, '[/]', '\\/', '')
-    exec "match" "ErrorMsg /" . highlight_pattern . "/"
+    call s:cmake_project_highlight_pattern(fullpath)
 
     let level = s:cmake_project_level(cmake_project_filename)
     
@@ -179,7 +201,7 @@ function! s:cmake_project_cursor_moved()
     let finding_line = s:cmake_project_find_parent(level, line('.'))
     while level > -1
       let path = s:cmake_project_var(getline(finding_line))
-      let fullpath = fnameescape(path) . fullpath
+      let fullpath = path . fullpath
       let level -= 1
       let finding_line = s:cmake_project_find_parent(level, finding_line)
     endwhile
@@ -189,6 +211,7 @@ function! s:cmake_project_cursor_moved()
       wincmd l
       exec 'e' fullpath
       setf cpp
+      wincmd h
     endif
   endif
 endfunction
