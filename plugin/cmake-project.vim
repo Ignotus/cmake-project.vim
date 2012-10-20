@@ -48,10 +48,14 @@ map <Space> :call g:cmake_project_hide_tree()<CR>
 function! g:cmake_project_hide_tree()
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
     let current_line = getline('.')
-    let stat = s:cmake_project_hiding_status(getline('.'))
-    echo stat 
+    let stat = s:cmake_project_hiding_status(current_line)
     if stat == '▼'   
-      s/▼/►/      
+      s/▼/►/ 
+      let level = s:cmake_project_level(current_line)
+      let current_index = line('.') + 1
+      while s:cmake_project_level(getline(current_index)) > level 
+        exec current_index 'delete'
+      endwhile
     elseif stat == '►'
       s/►/▼/
     endif
