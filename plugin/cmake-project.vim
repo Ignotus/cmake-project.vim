@@ -58,6 +58,24 @@ function! g:cmake_project_hide_tree()
       endwhile
     elseif stat == '►'
       s/►/▼/
+      let level = s:cmake_project_level(current_line)
+      let current_index = line('.')
+      let path = [s:cmake_project_var(getline('.'))]
+      
+      while current_index > 1
+        let current_index -= 1
+        let current = getline(current_index)
+        let current_level = s:cmake_project_level(current)
+        if current_level < level
+          let level = current_level
+          call insert(path,s:cmake_project_var(current)) 
+          if current_level == 0
+            break
+          endif
+        endif
+      endwhile
+      
+      echo path
     endif
   endif
 endfunction
