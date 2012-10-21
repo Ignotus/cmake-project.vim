@@ -5,11 +5,12 @@ About
 =====
 CMake project management plugin for VIM editor.
 
-[![VCP](http://i.imgur.com/wGeVb.png)](http://i.imgur.com/wGeVb.png)
+[![VCP](http://i.imgur.com/wGeVbl.png)](http://i.imgur.com/wGeVbl.png)
 
 Installing
 ==========
-  # make install
+  
+    $ make install
 
 Specify the DESTDIR variable to install it to the other directory.
 
