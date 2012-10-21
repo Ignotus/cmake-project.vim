@@ -58,8 +58,10 @@ function! g:cmake_project_hide_tree()
       endwhile
     elseif stat == '►'
       s/►/▼/
-      let level = s:cmake_project_level(current_line)
-      let current_index = line('.')
+      let current_line_level = s:cmake_project_level(current_line)
+      let level = current_line_level
+      let current_line_index = line('.')
+      let current_index = current_line_index
       let path = [s:cmake_project_var(getline('.'))]
       
       while current_index > 1
@@ -75,7 +77,13 @@ function! g:cmake_project_hide_tree()
         endif
       endwhile
       
-      echo path
+      let tree = s:cmake_project_file_tree
+      for val in path
+        let tree = tree[val]
+      endfor
+      
+      call s:cmake_project_print_bar(tree, current_line_level + 1)
+      exec current_line_index 
     endif
   endif
 endfunction
@@ -143,9 +151,10 @@ EOF
 
     let current_tree[filename] = 1
   endfor
-   
+  
   call s:cmake_project_print_bar(s:cmake_project_file_tree, 0)
-  delete 1
+  normal gg 
+  normal dd
 endfunction
 
 function! s:cmake_project_indent(level)
@@ -160,21 +169,22 @@ endfunction
 function! s:cmake_project_print_bar(tree, level)
   for pair in items(a:tree)
     if type(pair[1]) == type({})
-      let name = s:cmake_project_indent(a:level) . '▼' . pair[0]
+      let name = s:cmake_project_indent(a:level) . '▼' . pair[0] . '/'
 
-      call append(line('$'), name . '/')
+      call append(line('.'), name) 
+      normal j
       let newlevel = a:level + 1
       call s:cmake_project_print_bar(pair[1], newlevel)
     else
       let name = s:cmake_project_indent(a:level) . pair[0]
-      call append(line('$'), name) 
+      call append(line('.'), name) 
+      normal j
     endif
   endfor
 endfunction
 
 function! s:cmake_project_level(str)
-  let ident_level = match(a:str, '[▼►_a-zA-Z]')
-  return ident_level / 2
+  return match(a:str, '[▼►_a-zA-Z]') / 2
 endfunction
       
 function! s:cmake_project_hiding_status(str)
@@ -182,11 +192,8 @@ function! s:cmake_project_hiding_status(str)
 endfunction
 
 function! s:cmake_project_var(str)
-  let ident_level = match(a:str, '[_a-zA-Z]')
-  let filename = a:str[ident_level :]
-  return filename
+  return matchstr(a:str, '[^ ►▼/]\+')
 endfunction
-
 
 function! s:cmake_project_find_parent(ident_level, finding_line)
   if a:finding_line == 1
@@ -223,12 +230,13 @@ function! s:cmake_project_cursor_moved()
     let finding_line = s:cmake_project_find_parent(level, line('.'))
     while level > -1
       let path = s:cmake_project_var(getline(finding_line))
-      let fullpath = path . fullpath
+      let fullpath = path . '/' . fullpath
       let level -= 1
       let finding_line = s:cmake_project_find_parent(level, finding_line)
     endwhile
 
     let fullpath = '/' . fullpath
+    echo fullpath
     if filereadable(fullpath)
       wincmd l
       exec 'e' fullpath
