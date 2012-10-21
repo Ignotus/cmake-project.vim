@@ -39,7 +39,6 @@ if !exists('g:cmake_project_build_dir')
   let g:cmake_project_build_dir = "build"
 endif
 
-autocmd CursorMoved * call s:cmake_project_cursor_moved() 
 autocmd BufWinLeave * call s:cmake_project_on_hidden()
 command -nargs=0 -bar CMakePro call s:cmake_project_window()
 command -nargs=1 -bar CMake call s:cmake_project_cmake(<f-args>)
@@ -84,6 +83,8 @@ function! g:cmake_project_hide_tree()
       
       call s:cmake_project_print_bar(tree, current_line_level + 1)
       exec current_line_index 
+    else
+      call s:cmake_project_cursor_moved() 
     endif
   endif
 endfunction
