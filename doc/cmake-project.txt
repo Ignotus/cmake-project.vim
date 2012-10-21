@@ -1,0 +1,148 @@
+*cmake-project.txt*   CMake project management plugin 
+
+Author:         Minh Ngo <minh@fedoraproject.org>
+Licence:        BSD
+Homepage:       http://github.com/Ignotus/vim-cmake-project
+Version:        1.0.0
+
+==============================================================================
+Contents                                  *cmake-project* *cmake-project-contents*
+
+         1. Intro ........................... |cmake-project-intro|
+         2. Requirements .................... |cmake-project-requirements|
+         3. Installation .................... |cmake-project-installation|
+         4. Usage ........................... |cmake-project-usage|
+                Commands .................... |cmake-project-commands|
+         5. Configuration ................... |cmake-project-configuration|
+         6. History ......................... |cmake-project-history|
+         7. Todo ............................ |cmake-project-todo|
+         8. Credits ......................... |cmake-project-credits|
+
+==============================================================================
+1. Intro                                                   *cmake-project-intro*
+
+CMake-Project is a plugin for cmake projects effective management. It provides
+a sidebar that displays project files in the tree view.
+
+==============================================================================
+2. Requirements                                     *cmake-project-requirements*
+
+You need to install some perl packages for work with CMake-Project:
+    - perl-File-Find-Rule
+
+==============================================================================
+3. Installation                                     *cmake-project-installation*
+
+Change your current directory to the plugin root archive directory and use
+install methods:
+>
+    make install
+<
+
+You can specify a destination install directory by following methods:
+>
+    make install DESTDIR=/opt/vim
+<
+
+By default, DESTDIR is equal to ~/.vim/
+
+==============================================================================
+4. Usage                                                   *cmake-project-usage*
+
+First of all, you must start cmake command to generate a project. Run it with:
+>
+    :CMake "dir"
+<
+
+Where "dir" is your project directory.
+
+Before generating a cmake project you can determine cmake command arguments
+by a global variable:
+>
+    :let g:cmake_project_keys = "-DCMAKE_INSTALL_PREFIX=/usr"
+<
+
+To show a project bar, run a following command:
+>
+    :CMakePro
+<
+
+Press <Space> over a directory to hide/show its contents. Press <Space> over a
+file to open it.
+
+------------------------------------------------------------------------------
+COMMANDS                                                *cmake-project-commands*
+
+:CMake {project-directory}                                              *:CMake*
+    Generate a cmake project and show a project bar.
+
+:CMakePro                                                            *:CMakePro*
+    Show a project bar.
+
+==============================================================================
+5. Configuration                                   *cmake-project-configuration*
+                
+                                                     *g:cmake_project_build_dir*
+g:cmake_project_build_dir~
+Default: "build"
+
+By default, cmake will create a "build" folder in your project directory and
+generate its files there. But you can change this catalog by this variable.
+
+Example:
+>
+    let g:cmake_project_build_dir = "other directory"
+<
+
+                                                  *g:cmake_project_window_width*
+g:cmake_project_window_width~
+Default: 40
+
+You can change CMake Project panel width by this variable.
+
+Example:
+>
+    let g:cmake_project_window_width = 40
+<
+
+==============================================================================
+6. History                                               *cmake-project-history*
+
+1.0.0 (2012-10-21)
+    - First major release.
+
+==============================================================================
+7. Todo                                                     *cmake-project-todo*
+
+    - Other cmake project files support.
+
+==============================================================================
+8. Credits                                               *cmake-project-credits*
+
+CMake-project was written by Minh Ngo and is released under the BSD License.
+
+    Copyright (C) 2012 Minh Ngo <nlminhtl@gmail.com>
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+Thanks to the following people for code contributions, feature suggestions etc:
+Nikolay Pavlov (http://habrahabr.ru/users/ZyXI/)
+
+==============================================================================
+ vim: tw=78 ts=8 sw=4 sts=4 et ft=help  
