@@ -39,6 +39,10 @@ if !exists('g:cmake_project_build_dir')
   let g:cmake_project_build_dir = "build"
 endif
 
+if !exists('g:cmake_project_window_width')
+  let g:cmake_project_window_width = 40
+endif
+
 autocmd BufWinLeave * call s:cmake_project_on_hidden()
 command -nargs=0 -bar CMakePro call s:cmake_project_window()
 command -nargs=1 -bar CMake call s:cmake_project_cmake(<f-args>)
@@ -124,6 +128,7 @@ function! s:cmake_project_window()
   badd CMakeProject
   buffer CMakeProject
   setlocal buftype=nofile
+  exec 'vertical' 'resize ' . g:cmake_project_window_width
   let s:cmake_project_bufname = bufname('%')
 perl << EOF
   my $dir = VIM::Eval('g:cmake_project_build_dir');
