@@ -45,7 +45,7 @@ endif
 
 autocmd BufWinLeave * call s:cmake_project_on_hidden()
 command -nargs=0 -bar CMakePro call s:cmake_project_window()
-command -nargs=1 -bar CMake call s:cmake_project_cmake(<f-args>)
+command -nargs=* -complete=file CMake call s:cmake_project_cmake(<f-args>)
 map <Space> :call g:cmake_project_hide_tree()<CR>
 
 function! g:cmake_project_hide_tree()
@@ -99,7 +99,7 @@ function! s:cmake_project_on_hidden()
   endif
 endfunction
 
-function! s:cmake_project_cmake(srcdir)
+function! s:cmake_project_check_dir(srcdir)
   if !isdirectory(a:srcdir)
     echo "This directory not exists!" . a:srcdir
     return
@@ -111,10 +111,17 @@ function! s:cmake_project_cmake(srcdir)
   if !isdirectory(g:cmake_project_build_dir)
     call mkdir(g:cmake_project_build_dir)
   endif
-  
-  cd build
+endfunction
 
-  exec '!cmake' '../'
+function! s:cmake_project_cmake(srcdir)
+  call s:cmake_project_check_dir(a:srcdir)  
+
+  cd build
+  if exists('g:cmake_project_keys')
+    exec '!cmake' g:cmake_project_keys . ' ../'
+  else
+    exec '!cmake' '../'
+  endif
   cd ..
   call s:cmake_project_window()
 endfunction
