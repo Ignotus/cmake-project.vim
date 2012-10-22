@@ -44,7 +44,7 @@ sub cmake_project_files {
 sub src_files {
     my @result = ();
     foreach my $line(@{(shift)}) {
-        if ($line =~ m/\s*\"(([a-zA-Z_\/]+)\/([a-zA-Z_]+\.(cpp|cc|c))).*/) {
+        if ($line =~ m/\s*\"(([a-zA-Z0-9_\/- ]+)\/([a-zA-Z0-9_\/- ]+\.(cpp|cc|c))).*/) {
             push(@result, $1);
         }
     }
