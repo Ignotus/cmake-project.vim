@@ -43,6 +43,8 @@ if !exists('g:cmake_project_window_width')
   let g:cmake_project_window_width = 40
 endif
 
+let s:cmake_project_current_line = {}
+
 autocmd BufWinLeave * call s:cmake_project_on_hidden()
 command -nargs=0 -bar CMakePro call s:cmake_project_window()
 command -nargs=* -complete=file CMake call s:cmake_project_cmake(<f-args>)
@@ -288,9 +290,18 @@ function! s:cmake_project_cursor_moved()
     echo result_path 
     if filereadable(result_path)
       wincmd l
+      if exists('s:cmake_project_current_open_file')
+        let s:cmake_project_current_line[s:cmake_project_current_open_file] = line('.')
+      endif
       exec 'e' result_path 
       setf cpp
-      wincmd h
+
+      let s:cmake_project_current_open_file = result_path
+      if has_key(s:cmake_project_current_line, result_path)
+        exec s:cmake_project_current_line[result_path] 
+      else
+        let s:cmake_project_current_line[result_path] = 1
+      endif
     endif
   endif
 endfunction
