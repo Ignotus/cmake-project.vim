@@ -81,6 +81,12 @@ function! g:cmake_project_hide_tree()
       endwhile
       
       let tree = s:cmake_project_file_tree
+      
+      let key = path[0]
+      while !has_key(tree, key)
+        let tree = tree[keys(tree)[0]]
+      endwhile
+
       for val in path
         let tree = tree[val]
       endfor
