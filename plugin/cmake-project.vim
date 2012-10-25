@@ -165,9 +165,20 @@ EOF
     let current_tree[filename] = 1
   endfor
   
-  call s:cmake_project_print_bar(s:cmake_project_file_tree, 0)
+  call s:cmake_project_print_bar(s:cmake_project_find_tree(s:cmake_project_file_tree), 0)
   normal gg 
   normal dd
+endfunction
+
+function! s:cmake_project_find_tree(tree)
+  if len(a:tree) == 1
+    let subtree = a:tree[keys(a:tree)[0]]
+    if len(subtree) == 1
+      return s:cmake_project_find_tree(subtree)
+    endif
+  endif
+
+  return a:tree
 endfunction
 
 function! s:cmake_project_indent(level)
@@ -184,13 +195,13 @@ function! s:cmake_project_print_bar(tree, level)
     if type(pair[1]) == type({})
       let name = s:cmake_project_indent(a:level) . '▼' . pair[0] . '/'
 
-      call append(line('.'), name) 
+      call append('.', name) 
       normal j
       let newlevel = a:level + 1
       call s:cmake_project_print_bar(pair[1], newlevel)
     else
       let name = s:cmake_project_indent(a:level) . pair[0]
-      call append(line('.'), name) 
+      call append('.', name) 
       normal j
     endif
   endfor
@@ -241,18 +252,37 @@ function! s:cmake_project_cursor_moved()
     
     let level -= 1
     let finding_line = s:cmake_project_find_parent(level, line('.'))
+    let l:path = ''
     while level > -1
-      let path = s:cmake_project_var(getline(finding_line))
-      let fullpath = path . '/' . fullpath
+      let l:path = s:cmake_project_var(getline(finding_line))
+      let fullpath = l:path . '/' . fullpath
       let level -= 1
       let finding_line = s:cmake_project_find_parent(level, finding_line)
     endwhile
+    
+    let current_tree = s:cmake_project_file_tree
+    let l:begin_path = []
 
-    let fullpath = '/' . fullpath
-    echo fullpath
-    if filereadable(fullpath)
+    while !has_key(current_tree, l:path) 
+      let key = keys(current_tree)[0]
+      call insert(l:begin_path, key)
+      if type(current_tree[key]) != type({})
+        break
+      endif
+
+      let current_tree = current_tree[key]
+    endwhile
+
+    let result_path  = '/'
+    for val in begin_path
+      let result_path =  '/' . val . result_path
+    endfor
+
+    let result_path .= fullpath
+    echo result_path 
+    if filereadable(result_path)
       wincmd l
-      exec 'e' fullpath
+      exec 'e' result_path 
       setf cpp
       wincmd h
     endif
