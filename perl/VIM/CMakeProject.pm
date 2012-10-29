@@ -21,7 +21,8 @@
 package VIM::CMakeProject;
 our $version = '1.0.0';
 use File::Find::Rule;
-use Cwd;
+use Cwd qw(abs_path cwd);
+use List::MoreUtils qw(uniq);
 
 sub cmake_project_files {
     my $dir = shift;
@@ -29,23 +30,48 @@ sub cmake_project_files {
     my @dependencies = File::Find::Rule->file()
                                     ->name("DependInfo.cmake")
                                     ->in($dir);
+    my @internals = File::Find::Rule->file()
+                                    -> name("depend.internal")
+                                    ->in($dir);
     my @accum = ();
 
     foreach my $filename(@dependencies) {
-        open(FILE, $filename);
-        my @data = <FILE>;
-        push (@accum, src_files(\@data));
-        close(FILE);
+        push @accum, src_files($filename);
     }
 
-    return @accum;
+    my $currentdir = abs_path(cwd());
+    foreach my $filename(@internals) {
+        push @accum, header_files($filename, $currentdir);
+    }
+
+    return sort(uniq @accum);
 }
+
+sub header_files {
+    my @result = ();
+    
+    my ($file, $currentdir) = @_;
+    open(FILE, $file);
+ 
+    while (<FILE>) {
+        if ($_ =~ m/\s*(([a-zA-Z0-9_\/\-. ]+)\/([a-zA-Z0-9_\/\- ]+\.(hpp|h)))$/) {
+            my $abs = abs_path($1);
+            if (index($abs, $currentdir) != -1) {
+                push @result, $abs; 
+            }
+        }
+    }
+
+    return @result;
+}
+
 
 sub src_files {
     my @result = ();
-    foreach my $line(@{(shift)}) {
-        if ($line =~ m/\s*\"(([a-zA-Z0-9_\/\- ]+)\/([a-zA-Z0-9_\/\- ]+\.(cpp|cc|c))).*/) {
-            push(@result, $1);
+    open(FILE, shift);
+    while (<FILE>) {
+        if ($_ =~ m/\s*\"(([a-zA-Z0-9_\/\- ]+)\/([a-zA-Z0-9_\/\- ]+\.(cpp|cc|c))).*/) {
+            push @result, $1;
         }
     }
     return @result;
