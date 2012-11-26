@@ -28,7 +28,7 @@ perl <<EOF
     use File::Spec;
     my $rtp = VIM::Eval('&runtimepath');
     my @path = split /,/, $rtp;
-      unshift @INC, File::Spec->catdir($_, 'perl') foreach @path;
+    unshift @INC, File::Spec->catdir(scalar VIM::Eval('expand("<sfile>:h:h")'), 'perl');
   }
   
   use VIM::CMakeProject;

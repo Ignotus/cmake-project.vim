@@ -1,4 +1,4 @@
-VIM-CMake-Project v1.0.0
+VIM-CMake-Project v1.1.5
 ===============
 
 About
