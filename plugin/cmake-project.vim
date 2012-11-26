@@ -271,7 +271,12 @@ function! s:cmake_project_cursor_moved()
     let current_tree = s:cmake_project_file_tree
     let l:begin_path = []
 
-    while !has_key(current_tree, l:path) 
+    while !has_key(current_tree, l:path)
+      let keys = keys(current_tree)
+      if len(keys) == 0
+        break
+      endif
+
       let key = keys(current_tree)[0]
       call insert(l:begin_path, key)
       if type(current_tree[key]) != type({})
