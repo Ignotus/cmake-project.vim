@@ -18,12 +18,9 @@
 " LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 " OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 " SOFTWARE.
-let noperl = 0
-let nopython = 0
-
+"
 if !has('perl') && !has('python')
   echo 'Error: no perl and python found'
-  let noperl = 1
 endif
 
 
