@@ -20,8 +20,28 @@
 " SOFTWARE.
 "
 if !has('perl') && !has('python')
-  echo 'Error: no perl and python found'
+  echo '[CMakePtoject plugin] Error: no perl and python found'
 endif
+
+
+if exists('s:loaded_winmanager') || &cp
+" Already loaded by winmanager
+    finish
+endif
+
+let s:loaded_winmanager=1
+
+" Register in winmanager
+let g:CMakeProject_title = "[Cmake Explorer]"
+
+function! CMakeProject_Start()
+    " Entry point winamager plugin
+    call s:cmake_project_cmake(getcwd())
+endfunction
+
+function! CMakeProject_IsValid()
+    return 1
+endfu
 
 
 if has('perl')
@@ -63,7 +83,7 @@ command -nargs=0 -bar CMakePro call s:cmake_project_window()
 command -nargs=* -complete=file CMake call s:cmake_project_cmake(<f-args>)
 map <Space> :call g:cmake_project_hide_tree()<CR>
 "autocmd CursorMoved * call s:cmake_project_cursor_moved() 
-map <silent><Return> :call <SID>cmake_project_cursor_moved()<cr> 
+map <silent><Return> :call <SID>cmake_project_cursor_moved(0)<cr> 
 
 function! g:cmake_project_hide_tree()
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
@@ -111,7 +131,7 @@ function! g:cmake_project_hide_tree()
       call s:cmake_project_print_bar(tree, current_line_level + 1)
       exec current_line_index 
     else
-      call s:cmake_project_cursor_moved() 
+      call s:cmake_project_cursor_moved(0) 
     endif
   endif
 endfunction
@@ -153,12 +173,16 @@ function! s:cmake_project_window()
   if exists('s:cmake_project_bufname')
     return
   endif
+  if exists('s:loaded_winmanager')
+   " Winmanager has already created buffer for us
+  else
+      vnew
+      badd CMakeProject
+      buffer CMakeProject
+      setlocal buftype=nofile
+      exec 'vertical' 'resize ' . g:cmake_project_window_width
+  endif
 
-  vnew
-  badd CMakeProject
-  buffer CMakeProject
-  setlocal buftype=nofile
-  exec 'vertical' 'resize ' . g:cmake_project_window_width
   let s:cmake_project_bufname = bufname('%')
 if has('perl')
 perl <<EOF
@@ -275,7 +299,7 @@ function! s:cmake_project_highlight_pattern(path)
   exec "match" "ErrorMsg /" . highlight_pattern . "/"
 endfunction
 
-function! s:cmake_project_cursor_moved()
+function! s:cmake_project_cursor_moved(split)
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
     let cmake_project_filename = getline('.')
     let fullpath = s:cmake_project_var(cmake_project_filename)
@@ -319,12 +343,17 @@ function! s:cmake_project_cursor_moved()
     let result_path .= fullpath
     echo result_path
     if filereadable(result_path)
+        if !exists('s:loaded_winmanager')
       wincmd l
       if exists('s:cmake_project_current_open_file')
         let s:cmake_project_current_line[s:cmake_project_current_open_file] = line('.')
       endif
       exec 'e' result_path 
       setf cpp
+    else
+        " Winmanger knows how and where open file
+        call WinManagerFileEdit(result_path, a:split)
+    endif
 
       let s:cmake_project_current_open_file = result_path
       if has_key(s:cmake_project_current_line, result_path)
