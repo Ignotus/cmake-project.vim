@@ -9,11 +9,11 @@ def cmake_project_files(project_dir):
     internals = []
     currentdir = os.path.abspath(os.getcwd())
 
-    for root, dirs, files in os.walk(os.path.join(currentdir,project_dir)):
+    for root, dirs, files in os.walk(os.path.join(currentdir, project_dir)):
         for name in dirs:
             path = os.path.join(root, name)
-            dependencies.append(glob.glob(os.path.join(path,"DependInfo.cmake")))
-            internals.append(glob.glob(os.path.join(path,"depend.internal")))
+            dependencies.append(glob.glob(os.path.join(path, "DependInfo.cmake")))
+            internals.append(glob.glob(os.path.join(path, "depend.internal")))
     
     dependencies = filter(None, dependencies)
     internals = filter(None, internals)

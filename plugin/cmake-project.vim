@@ -19,6 +19,40 @@
 " OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 " SOFTWARE.
 "
+"
+" 05.12.12 remove external (perl or python) dependencies
+" g:cmake_project_use_viml=1 for function s:cmake_project_find_file calling
+let g:cmake_project_use_viml=1
+
+function s:cmake_project_find_files()
+    let currentdir = getcwd() . '/' . g:cmake_project_build_dir
+    let dependencies = globpath(currentdir, "**/DependInfo.cmake")
+    let internals = globpath(currentdir, "**/depend.internal")
+    let result = []
+    for depend in split(dependencies)
+        if filereadable(depend)
+            for line in readfile(depend)
+               let filename = matchlist(line, '\(^\s\+"\)\([[:graph:]]\+[.c|.cpp|.cc]\)"')
+                if len(filename) > 1 && strlen(filename[2])
+                   call add(result, filename[2])
+                endif
+            endfor
+        endif
+    endfor
+
+    for internal in split(internals)
+        if filereadable(internal)
+            for line in readfile(internal)
+                let filename = matchlist(line, '\(^\s\+\)\([[:graph:]]\+[.h|.hh|.hpp]\)')
+                if len(filename) >1 && strlen(filename[2]) && match(getcwd(), filename[2]) != -1
+                    call add(result, filename[2])
+                endif
+            endfor
+        endif
+    endfor
+    return result
+endfunction
+
 if !has('perl') && !has('python')
   echo '[CMakePtoject plugin] Error: no perl and python found'
 endif
@@ -29,13 +63,14 @@ if exists('s:loaded_winmanager') || &cp
     finish
 endif
 
-let s:loaded_winmanager=1
 
 " Register in winmanager
 let g:CMakeProject_title = "[Cmake Explorer]"
 
 function! CMakeProject_Start()
     " Entry point winamager plugin
+    let s:loaded_winmanager=1
+
     call s:cmake_project_cmake(getcwd())
 endfunction
 
@@ -86,6 +121,9 @@ map <Space> :call g:cmake_project_hide_tree()<CR>
 map <silent><Return> :call <SID>cmake_project_cursor_moved(0)<cr> 
 
 function! g:cmake_project_hide_tree()
+  if exists('s:loaded_winmanager')
+"      return
+  endif
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
     let current_line = getline('.')
     let stat = s:cmake_project_hiding_status(current_line)
@@ -184,7 +222,9 @@ function! s:cmake_project_window()
   endif
 
   let s:cmake_project_bufname = bufname('%')
-if has('perl')
+  if exists('g:cmake_project_use_viml')  && g:cmake_project_use_viml==1
+      let s:cmake_project_files = split(join(s:cmake_project_find_files(), ','), ',')
+  elseif has('perl')
 perl <<EOF
   my $dir = VIM::Eval('g:cmake_project_build_dir');
   my @result = VIM::CMakeProject::cmake_project_files($dir);
@@ -205,6 +245,8 @@ result = map(lambda x: re.sub('\'','\"', x), result)
 vim.command("let s:cmake_project_files = split('" + ','.join(result) + "', ',')")
 EOF
 endif
+"endif
+    echo "Files:  " + string(s:cmake_project_files)
   let s:cmake_project_file_tree = {}
   
   for fullpath in s:cmake_project_files
