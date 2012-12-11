@@ -22,7 +22,8 @@
 "
 " 05.12.12 remove external (perl or python) dependencies
 " g:cmake_project_use_viml=1 for function s:cmake_project_find_file calling
-let g:cmake_project_use_viml=1
+" let g:cmake_project_use_viml=1
+" TODO: Change [►▼] to global variable like in TagBar plugin 
 
 function s:cmake_project_find_files()
     let currentdir = getcwd() . '/' . g:cmake_project_build_dir
@@ -79,29 +80,6 @@ function! CMakeProject_IsValid()
 endfu
 
 
-if has('perl')
-perl <<EOF
-  BEGIN {
-    use File::Spec;
-    my $rtp = VIM::Eval('&runtimepath');
-    my @path = split /,/, $rtp;
-    unshift @INC, File::Spec->catdir(scalar VIM::Eval('expand("<sfile>:h:h")'), 'perl');
-  }
-  
-  use VIM::CMakeProject;
-EOF
-elseif has('python')
-python <<EOF
-import os
-import sys
-import glob
-import vim
-rtp = vim.eval('&runtimepath')
-path = rtp.split(',')
-sys.path.append(os.path.abspath(glob.glob(vim.eval('expand("<sfile>:h:h")')+'/python')[0]))
-import CMakeProject
-EOF
-endif
 
 if !exists('g:cmake_project_build_dir')
   let g:cmake_project_build_dir = "build"
@@ -222,31 +200,8 @@ function! s:cmake_project_window()
   endif
 
   let s:cmake_project_bufname = bufname('%')
-  if exists('g:cmake_project_use_viml')  && g:cmake_project_use_viml==1
-      let s:cmake_project_files = split(join(s:cmake_project_find_files(), ','), ',')
-  elseif has('perl')
-perl <<EOF
-  my $dir = VIM::Eval('g:cmake_project_build_dir');
-  my @result = VIM::CMakeProject::cmake_project_files($dir);
-
-  VIM::DoCommand('let s:cmake_project_files = []');
-  foreach $filename(@result) {
-    if (-e $filename) {
-      VIM::DoCommand("call insert(s:cmake_project_files, \'$filename\')");
-    }
-  }
-EOF
-elseif has('python')
-python <<EOF
-import re
-dirname = vim.eval('g:cmake_project_build_dir')
-result = CMakeProject.cmake_project_files(dirname)
-result = map(lambda x: re.sub('\'','\"', x), result)
-vim.command("let s:cmake_project_files = split('" + ','.join(result) + "', ',')")
-EOF
-endif
-"endif
-    echo "Files:  " + string(s:cmake_project_files)
+  let s:cmake_project_files = s:cmake_project_find_files()
+ 
   let s:cmake_project_file_tree = {}
   
   for fullpath in s:cmake_project_files
