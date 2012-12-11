@@ -23,7 +23,8 @@
 " 05.12.12 remove external (perl or python) dependencies
 " g:cmake_project_use_viml=1 for function s:cmake_project_find_file calling
 " let g:cmake_project_use_viml=1
-" TODO: Change [►▼] to global variable like in TagBar plugin 
+" TODO: Change [►▼] to global variable like in TagBar plugin
+" TODO: Add syntax coloring?
 
 function s:cmake_project_find_files()
     let currentdir = getcwd() . '/' . g:cmake_project_build_dir
@@ -54,12 +55,8 @@ function s:cmake_project_find_files()
     return sort(result)
 endfunction
 
-if !has('perl') && !has('python')
-  echo '[CMakePtoject plugin] Error: no perl and python found'
-endif
 
-
-if exists('s:loaded_winmanager') || &cp
+if exists('b:loaded_winmanager') || &cp
 " Already loaded by winmanager
     finish
 endif
@@ -70,7 +67,7 @@ let g:CMakeProject_title = "[Cmake Explorer]"
 
 function! CMakeProject_Start()
     " Entry point winamager plugin
-    let s:loaded_winmanager=1
+    let b:loaded_winmanager=1
 
     call s:cmake_project_cmake(getcwd())
 endfunction
@@ -99,7 +96,7 @@ map <Space> :call g:cmake_project_hide_tree()<CR>
 map <silent><Return> :call <SID>cmake_project_cursor_moved(0)<cr> 
 
 function! g:cmake_project_hide_tree()
-  if exists('s:loaded_winmanager')
+  if exists('b:loaded_winmanager')
 "      return
   endif
   if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
@@ -189,7 +186,7 @@ function! s:cmake_project_window()
   if exists('s:cmake_project_bufname')
     return
   endif
-  if exists('s:loaded_winmanager')
+  if exists('b:loaded_winmanager')
    " Winmanager has already created buffer for us
   else
       vnew
@@ -340,7 +337,7 @@ function! s:cmake_project_cursor_moved(split)
     let result_path .= fullpath
     echo result_path
     if filereadable(result_path)
-        if !exists('s:loaded_winmanager')
+        if !exists('b:loaded_winmanager')
       wincmd l
       if exists('s:cmake_project_current_open_file')
         let s:cmake_project_current_line[s:cmake_project_current_open_file] = line('.')
