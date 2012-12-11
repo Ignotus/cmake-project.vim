@@ -51,7 +51,7 @@ function s:cmake_project_find_files()
             endfor
         endif
     endfor
-    return result
+    return sort(result)
 endfunction
 
 if !has('perl') && !has('python')
