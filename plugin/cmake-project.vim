@@ -1,5 +1,5 @@
 " vim-cmake-project
-" Copyright (C) 2012 Minh Ngo <nlminhtl@gmail.com>
+" Copyright (C) 2012-2014 Minh Ngo <nlminhtl@gmail.com>
 "
 " Permission is hereby granted, free of charge, to any person obtaining a
 " copy of this software and associated documentation files (the "Software"),
@@ -19,294 +19,212 @@
 " OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 " SOFTWARE.
 
-if !has('perl')
-  echo 'Error: perl not found'
-  finish
+if !has('python')
+    echo 'Error: Required vim compiled with +python'
+    finish
+endif
+
+if !exists('g:cmake_project_show_bar')
+    let g:cmake_project_show_bar = 0 
 else
-perl <<EOF
-  BEGIN {
-    use File::Spec;
-    my $rtp = VIM::Eval('&runtimepath');
-    my @path = split /,/, $rtp;
-    unshift @INC, File::Spec->catdir(scalar VIM::Eval('expand("<sfile>:h:h")'), 'perl');
-  }
-  
-  use VIM::CMakeProject;
+    call s:cmake_show_bar()
+endif
+
+if !exists('g:cmake_project_bar_width')
+    let g:cmake_project_bar_width = 40
+endif
+
+if !exists('g:cmake_project_folder_open_symbol')
+    let g:cmake_project_folder_open_symbol = '-'
+endif
+
+if !exists('g:cmake_project_folder_close_symbol')
+    let g:cmake_project_folder_close_symbol = '+'
+endif
+
+
+python << EOF
+import vim
+from sets import Set
+
+s_cmake_project_show_bar = vim.eval('g:cmake_project_show_bar')
+s_cmake_project_bar_width = vim.eval('g:cmake_project_bar_width')
+
+
+create_tree_node = lambda: ({}, Set(), True)
+
+s_cmake_project_file_tree = create_tree_node(0)
 EOF
-endif
 
-if !exists('g:cmake_project_build_dir')
-  let g:cmake_project_build_dir = "build"
-endif
 
-if !exists('g:cmake_project_window_width')
-  let g:cmake_project_window_width = 40
-endif
+" Interface
+command -nargs=1 -complete=file CMakeGen call s:cmake_gen_project(<f-args>)
+command -nargs=0 -bar CMakeBar call s:cmake_show_bar()
+map <Space> :call g:cmake_on_space_clicked()<CR>
 
-let s:cmake_project_current_line = {}
+" Implementation
+function! s:run_cmake(i_directory)
+    exec 'cd' a:i_directory
+    exec '!cmake' "-G\"CodeBlocks - Unix Makefiles\" " . s:cmake_project_directory
+    exec 'cd' s:cmake_project_directory
+endfunction
 
-autocmd BufWinLeave * call s:cmake_project_on_hidden()
-command -nargs=0 -bar CMakePro call s:cmake_project_window()
-command -nargs=* -complete=file CMake call s:cmake_project_cmake(<f-args>)
-map <Space> :call g:cmake_project_hide_tree()<CR>
 
-function! g:cmake_project_hide_tree()
-  if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
-    let current_line = getline('.')
-    let stat = s:cmake_project_hiding_status(current_line)
-    if stat == '▼'   
-      s/▼/►/ 
-      let level = s:cmake_project_level(current_line)
-      let current_index = line('.') + 1
-      while s:cmake_project_level(getline(current_index)) > level 
-        exec current_index 'delete'
-      endwhile
-    elseif stat == '►'
-      s/►/▼/
-      let current_line_level = s:cmake_project_level(current_line)
-      let level = current_line_level
-      let current_line_index = line('.')
-      let current_index = current_line_index
-      let path = [s:cmake_project_var(getline('.'))]
-      
-      while current_index > 1
-        let current_index -= 1
-        let current = getline(current_index)
-        let current_level = s:cmake_project_level(current)
-        if current_level < level
-          let level = current_level
-          call insert(path,s:cmake_project_var(current)) 
-          if current_level == 0
+function! s:gen_file_tree(i_directory)
+    exec 'cd' a:i_directory
+
+python << EOF
+import vim
+import glob
+import xml.etree.ElementTree as ET
+
+cm_files_rel_dir = vim.eval('a:i_directory')
+current_dir = vim.eval('s:cmake_project_directory')
+current_dir_len = len(current_dir) + 1
+
+cmake_files_folder = current_dir + '/' + cm_files_rel_dir + '/'
+
+project_file = glob.glob(cmake_files_folder + '*.cbp')[0]
+tree = ET.parse(project_file)
+root = tree.getroot()
+
+files = [file_name.get('filename') for file_name in root.findall("./Project/Unit")]
+
+s_cmake_project_file_tree = create_tree_node()
+
+for file in files:
+    paths = file[current_dir_len:].split('/')
+    file_name = paths[-1]
+    paths.pop()
+
+    current_tree_ref = s_cmake_project_file_tree 
+    for path in paths:
+        if not current_tree_ref[0].has_key(path):
+            current_tree_ref[0][path] = create_tree_node()
+        current_tree_ref = current_tree_ref[0][path]
+
+    current_tree_ref[1].add(file_name)
+
+EOF
+
+    exec 'cd' s:cmake_project_directory
+endfunction
+
+
+function! s:cmake_gen_project(i_directory)
+    let s:cmake_project_directory = getcwd()
+    call s:run_cmake(a:i_directory)
+    call s:gen_file_tree(a:i_directory)
+endfunction
+
+
+function! s:cmake_print_file_tree()
+
+python << EOF
+
+folder_open_symbol = vim.eval('g:cmake_project_folder_open_symbol')
+folder_close_symbol = vim.eval('g:cmake_project_folder_close_symbol')
+
+def process_folder(i_directory, i_recursion_level):
+    for file_name in sorted(i_directory[1], key = lambda item: (int(item.partition(' ')[0])
+                                                                if item[0].isdigit() else float('inf'), item)):
+        text = '   ' * i_recursion_level
+        text += file_name
+        vim.current.buffer.append(text)
+    
+
+    for folder_name, folder_content  in i_directory[0].items():
+        text = '   ' * i_recursion_level
+        text += (folder_open_symbol if folder_content[2] == True else folder_close_symbol) + folder_name
+        vim.current.buffer.append(text)
+        if folder_content[2] == True:
+            process_folder(folder_content, i_recursion_level + 1)
+        
+process_folder(s_cmake_project_file_tree, 0)
+EOF
+
+    " Remove first line
+    normal gg
+    normal dd 
+endfunction
+
+
+function! s:cmake_show_bar()
+    vnew
+    badd CMakeProject
+    buffer CMakeProject
+    setlocal buftype=nofile
+    exec 'vertical' 'resize ' . g:cmake_project_bar_width
+
+    let s:cmake_project_bufname = bufname('%')
+    normal gg    
+    normal dG
+
+    call s:cmake_print_file_tree()
+    setlocal nomodifiable
+endfunction
+
+
+function! g:cmake_on_space_clicked()
+    if !exists('s:cmake_project_bufname') || bufname('%') != s:cmake_project_bufname
+        return
+    endif
+
+python << EOF
+current_line_id = vim.current.window.cursor[0]
+current_line = vim.current.buffer[current_line_id]
+non_spaces = filter(lambda x: x != ' ', current_line)
+if not non_spaces:
+    return
+
+folder_open_symbol = vim.eval('g:cmake_project_folder_open_symbol')
+
+def spaces_count(line):
+    spaces = 0
+    for i in range(len(line)):
+        if line[i] != ' ':
             break
-          endif
-        endif
-      endwhile
-      
-      let tree = s:cmake_project_file_tree
-      
-      let key = path[0]
-      while !has_key(tree, key)
-        let tree = tree[keys(tree)[0]]
-      endwhile
+        spaces += 1
+    spaces
 
-      for val in path
-        let tree = tree[val]
-      endfor
-      
-      call s:cmake_project_print_bar(tree, current_line_level + 1)
-      exec current_line_index 
-    else
-      call s:cmake_project_cursor_moved() 
-    endif
-  endif
-endfunction
 
-function! s:cmake_project_on_hidden()
-  if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
-    unlet s:cmake_project_bufname
-  endif
-endfunction
+def find_first_symbol_and_replace(line, symbol, replaced_symbol)
+    for i in range(len(line)):
+        if line[i] == symbol:
+            line[i] = replaced_symbol 
+            break
 
-function! s:cmake_project_check_dir(srcdir)
-  if !isdirectory(a:srcdir)
-    echo "This directory not exists!" . a:srcdir
-    return
-  endif
-  
-  let s:cmake_project_dir = a:srcdir
 
-  exec 'cd' fnameescape(a:srcdir)
-  if !isdirectory(g:cmake_project_build_dir)
-    call mkdir(g:cmake_project_build_dir)
-  endif
-endfunction
+def hide():
+    find_first_symbol_and_replace(current_line, non_spaces, folder_close_symbol)
+    
+    spaces = spaces_count(current_line)
+    vim.current.buffer[current_line_id] = current_line
+    
+    current_line_id += 1
+    while current_line_id < len(vim.current.buffer):
+        if spaces_count(vim.current.buffer[current_line_id]) < spaces:
+            del vim.current.buffer[current_line_id]
+        else
+            break
 
-function! s:cmake_project_cmake(srcdir)
-  call s:cmake_project_check_dir(a:srcdir)  
 
-  cd build
-  if exists('g:cmake_project_keys')
-    exec '!cmake' g:cmake_project_keys . ' ../'
-  else
-    exec '!cmake' '../'
-  endif
-  cd ..
-  call s:cmake_project_window()
-endfunction
+def show():
+    find_first_symbol_and_replace(current_line, non_spaces, folder_open_symbol)
+    spaces = spaces_count(current_line)
+    pass
 
-function! s:cmake_project_window()
-  if exists('s:cmake_project_bufname')
-    return
-  endif
 
-  vnew
-  badd CMakeProject
-  buffer CMakeProject
-  setlocal buftype=nofile
-  exec 'vertical' 'resize ' . g:cmake_project_window_width
-  let s:cmake_project_bufname = bufname('%')
-perl << EOF
-  my $dir = VIM::Eval('g:cmake_project_build_dir');
-  my @result = VIM::CMakeProject::cmake_project_files($dir);
+def open()
+    pass
 
-  VIM::DoCommand('let s:cmake_project_files = []');
-  foreach $filename(@result) {
-    if (-e $filename) {
-      VIM::DoCommand("call insert(s:cmake_project_files, \'$filename\')");
-    }
-  }
+
+if non_spaces[0] == folder_open_symbol:
+    hide()
+elif non_spaces[0] == folder_close_symbol:
+    show()
+else:
+    open()
+
 EOF
-  let s:cmake_project_file_tree = {}
-  
-  for fullpath in s:cmake_project_files
-    let current_tree = s:cmake_project_file_tree
-    let cmake_project_args = split(fullpath, '\/')
-    let filename = remove(cmake_project_args, -1)
-    for path in cmake_project_args
-      if !has_key(current_tree, path)
-        let current_tree[path] = {}
-      endif
-
-      let current_tree = current_tree[path]
-    endfor
-
-    let current_tree[filename] = 1
-  endfor
-  
-  call s:cmake_project_print_bar(s:cmake_project_find_tree(s:cmake_project_file_tree), 0)
-  normal gg 
-  normal dd
-endfunction
-
-function! s:cmake_project_find_tree(tree)
-  if len(a:tree) == 1
-    let subtree = a:tree[keys(a:tree)[0]]
-    if len(subtree) == 1
-      return s:cmake_project_find_tree(subtree)
-    endif
-  endif
-
-  return a:tree
-endfunction
-
-function! s:cmake_project_indent(level)
-  let result = ''
-  for i in range(1, a:level)
-    let result .= '  '
-  endfor
-
-  return result
-endfunction
-
-function! s:cmake_project_print_bar(tree, level)
-  for pair in items(a:tree)
-    if type(pair[1]) == type({})
-      let name = s:cmake_project_indent(a:level) . '▼' . pair[0] . '/'
-
-      call append('.', name) 
-      normal j
-      let newlevel = a:level + 1
-      call s:cmake_project_print_bar(pair[1], newlevel)
-    else
-      let name = s:cmake_project_indent(a:level) . pair[0]
-      call append('.', name) 
-      normal j
-    endif
-  endfor
-endfunction
-
-function! s:cmake_project_level(str)
-  return match(a:str, '[▼►_a-zA-Z]') / 2
-endfunction
-      
-function! s:cmake_project_hiding_status(str)
- return matchstr(a:str, '[►▼]')
-endfunction
-
-function! s:cmake_project_var(str)
-  return matchstr(a:str, '[^ ►▼/]\+')
-endfunction
-
-function! s:cmake_project_find_parent(ident_level, finding_line)
-  if a:finding_line == 1
-    return -1
-  endif
-
-  let fline = a:finding_line - 1
-  while fline > 0
-    let l = getline(fline)
-    let level = s:cmake_project_level(l)
-    if level == a:ident_level
-      return fline
-    endif
-    let fline -= 1
-  endwhile
-  return -1
-endfunction
-
-function! s:cmake_project_highlight_pattern(path)
-  let highlight_pattern = substitute(a:path, '[.]', '\\.', '')
-  let highlight_pattern = substitute(highlight_pattern, '[/]', '\\/', '')
-  exec "match" "ErrorMsg /" . highlight_pattern . "/"
-endfunction
-
-function! s:cmake_project_cursor_moved()
-  if exists('s:cmake_project_bufname') && bufname('%') == s:cmake_project_bufname
-    let cmake_project_filename = getline('.')
-    let fullpath = s:cmake_project_var(cmake_project_filename)
-    call s:cmake_project_highlight_pattern(fullpath)
-
-    let level = s:cmake_project_level(cmake_project_filename)
-    
-    let level -= 1
-    let finding_line = s:cmake_project_find_parent(level, line('.'))
-    let l:path = ''
-    while level > -1
-      let l:path = s:cmake_project_var(getline(finding_line))
-      let fullpath = l:path . '/' . fullpath
-      let level -= 1
-      let finding_line = s:cmake_project_find_parent(level, finding_line)
-    endwhile
-    
-    let current_tree = s:cmake_project_file_tree
-    let l:begin_path = []
-
-    while !has_key(current_tree, l:path)
-      let keys = keys(current_tree)
-      if len(keys) == 0
-        break
-      endif
-
-      let key = keys(current_tree)[0]
-      call insert(l:begin_path, key)
-      if type(current_tree[key]) != type({})
-        break
-      endif
-
-      let current_tree = current_tree[key]
-    endwhile
-
-    let result_path  = '/'
-    for val in begin_path
-      let result_path =  '/' . val . result_path
-    endfor
-
-    let result_path .= fullpath
-    echo result_path 
-    if filereadable(result_path)
-      wincmd l
-      if exists('s:cmake_project_current_open_file')
-        let s:cmake_project_current_line[s:cmake_project_current_open_file] = line('.')
-      endif
-      exec 'e' result_path 
-      setf cpp
-
-      let s:cmake_project_current_open_file = result_path
-      if has_key(s:cmake_project_current_line, result_path)
-        exec s:cmake_project_current_line[result_path] 
-      else
-        let s:cmake_project_current_line[result_path] = 1
-      endif
-    endif
-  endif
 endfunction
