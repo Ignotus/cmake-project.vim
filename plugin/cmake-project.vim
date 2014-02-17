@@ -50,10 +50,15 @@ from sets import Set
 s_cmake_project_show_bar = vim.eval('g:cmake_project_show_bar')
 s_cmake_project_bar_width = vim.eval('g:cmake_project_bar_width')
 
+class Prop:
+    visible = True
+    def __init__(self, visible):
+        self.visible = visible
 
-create_tree_node = lambda: ({}, Set(), True)
+create_tree_node = lambda: ({}, Set(), Prop(True))
 
-s_cmake_project_file_tree = create_tree_node(0)
+s_cmake_project_node_dict = {}
+s_cmake_project_file_tree = create_tree_node()
 EOF
 
 
@@ -99,11 +104,13 @@ for file in files:
 
     current_tree_ref = s_cmake_project_file_tree 
     for path in paths:
-        if not current_tree_ref[0].has_key(path):
-            current_tree_ref[0][path] = create_tree_node()
-        current_tree_ref = current_tree_ref[0][path]
+        directories, _, _ = current_tree_ref
+        if not directories.has_key(path):
+            directories[path] = create_tree_node()
+        current_tree_ref = directories[path]
 
-    current_tree_ref[1].add(file_name)
+    _, files, _ = current_tree_ref
+    files.add(file_name)
 
 EOF
 
@@ -126,20 +133,25 @@ folder_open_symbol = vim.eval('g:cmake_project_folder_open_symbol')
 folder_close_symbol = vim.eval('g:cmake_project_folder_close_symbol')
 
 def process_folder(i_directory, i_recursion_level):
-    for file_name in sorted(i_directory[1], key = lambda item: (int(item.partition(' ')[0])
-                                                                if item[0].isdigit() else float('inf'), item)):
+    directories, files, _ = i_directory
+    for file_name in sorted(files, key = lambda item: (int(item.partition(' ')[0])
+                                                       if item[0].isdigit() else float('inf'), item)):
         text = '   ' * i_recursion_level
         text += file_name
         vim.current.buffer.append(text)
     
 
-    for folder_name, folder_content  in i_directory[0].items():
+    for folder_name in directories.keys():
         text = '   ' * i_recursion_level
-        text += (folder_open_symbol if folder_content[2] == True else folder_close_symbol) + folder_name
+        folder_content = directories[folder_name]
+        subdir, subfiles, prop = folder_content
+        text += (folder_open_symbol if prop.visible == True else folder_close_symbol) + folder_name
+        s_cmake_project_node_dict[len(vim.current.buffer)] = prop
         vim.current.buffer.append(text)
-        if folder_content[2] == True:
+        if prop.visible == True:
             process_folder(folder_content, i_recursion_level + 1)
         
+s_cmake_project_node_dict =  {}
 process_folder(s_cmake_project_file_tree, 0)
 EOF
 
@@ -155,6 +167,7 @@ function! s:cmake_show_bar()
     buffer CMakeProject
     setlocal buftype=nofile
     exec 'vertical' 'resize ' . g:cmake_project_bar_width
+    setlocal modifiable
 
     let s:cmake_project_bufname = bufname('%')
     normal gg    
@@ -170,61 +183,34 @@ function! g:cmake_on_space_clicked()
         return
     endif
 
+    let current_line = line('.')
 python << EOF
-current_line_id = vim.current.window.cursor[0]
-current_line = vim.current.buffer[current_line_id]
+current_row, current_col = vim.current.window.cursor
+current_line = vim.current.buffer[current_row - 1]
 non_spaces = filter(lambda x: x != ' ', current_line)
-if not non_spaces:
-    return
-
-folder_open_symbol = vim.eval('g:cmake_project_folder_open_symbol')
-
-def spaces_count(line):
-    spaces = 0
-    for i in range(len(line)):
-        if line[i] != ' ':
-            break
-        spaces += 1
-    spaces
-
-
-def find_first_symbol_and_replace(line, symbol, replaced_symbol)
-    for i in range(len(line)):
-        if line[i] == symbol:
-            line[i] = replaced_symbol 
-            break
-
 
 def hide():
-    find_first_symbol_and_replace(current_line, non_spaces, folder_close_symbol)
-    
-    spaces = spaces_count(current_line)
-    vim.current.buffer[current_line_id] = current_line
-    
-    current_line_id += 1
-    while current_line_id < len(vim.current.buffer):
-        if spaces_count(vim.current.buffer[current_line_id]) < spaces:
-            del vim.current.buffer[current_line_id]
-        else
-            break
-
+    if s_cmake_project_node_dict.has_key(current_row):
+        s_cmake_project_node_dict[current_row].visible = False
+        vim.command('hide')
+        vim.command('call s:cmake_show_bar()')
 
 def show():
-    find_first_symbol_and_replace(current_line, non_spaces, folder_open_symbol)
-    spaces = spaces_count(current_line)
+    if s_cmake_project_node_dict.has_key(current_row):
+        s_cmake_project_node_dict[current_row].visible = True
+        vim.command('hide')
+        vim.command('call s:cmake_show_bar()')
+
+def open():
     pass
 
-
-def open()
-    pass
-
-
-if non_spaces[0] == folder_open_symbol:
-    hide()
-elif non_spaces[0] == folder_close_symbol:
-    show()
-else:
-    open()
-
+if non_spaces:
+    if non_spaces[0] == folder_open_symbol:
+        hide()
+    elif non_spaces[0] == folder_close_symbol:
+        show()
+    else:
+        open()
 EOF
+
 endfunction
