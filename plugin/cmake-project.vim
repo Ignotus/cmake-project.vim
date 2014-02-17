@@ -212,5 +212,6 @@ if non_spaces:
     else:
         open()
 EOF
+    exec l:current_line
 
 endfunction
