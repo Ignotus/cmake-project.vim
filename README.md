@@ -1,4 +1,4 @@
-VIM-CMake-Project v1.1.5
+VIM-CMake-Project v2.0.0
 ===============
 
 About
@@ -17,7 +17,3 @@ Specify the DESTDIR variable to install it to the other directory.
 License
 =======
 This product is released under the [BSD License](http://opensource.org/licenses/bsd-3-clause).
-
-Dependencies
-============
-  * perl-File-Find-Rule
