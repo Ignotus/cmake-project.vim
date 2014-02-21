@@ -3,7 +3,7 @@
 Author:         Minh Ngo <minh@fedoraproject.org>
 Licence:        BSD
 Homepage:       http://github.com/Ignotus/vim-cmake-project
-Version:        1.0.0
+Version:        2.0.0
 
 ==============================================================================
 Contents                                  *cmake-project* *cmake-project-contents*
@@ -22,13 +22,16 @@ Contents                                  *cmake-project* *cmake-project-content
 1. Intro                                                   *cmake-project-intro*
 
 CMake-Project is a plugin for cmake projects effective management. It provides
-a sidebar that displays project files in the tree view.
+a sidebar that shows files in the tree view.
 
 ==============================================================================
 2. Requirements                                     *cmake-project-requirements*
 
-You need to install some perl packages for work with CMake-Project:
-    - perl-File-Find-Rule
+You need to have the VIM editor that supports python scripting. You can check
+it by this command in a console:
+
+    $ vim --version |grep +python
+    +cryptv          +linebreak       +python/dyn      +viminfo
 
 ==============================================================================
 3. Installation                                     *cmake-project-installation*
@@ -49,64 +52,68 @@ By default, DESTDIR is equal to ~/.vim/
 ==============================================================================
 4. Usage                                                   *cmake-project-usage*
 
-First of all, you must start cmake command to generate a project. Run it with:
+First of all, you should go to the cmake project directory.
 >
-    :CMake "dir"
+    $ cd <project directory>
 <
-
-Where "dir" is your project directory.
-
-Before generating a cmake project you can determine cmake command arguments
-by a global variable:
+Secondly, create a folder for cmake project build files.
 >
-    :let g:cmake_project_keys = "-DCMAKE_INSTALL_PREFIX=/usr"
+    $ mkdir <build dir>
 <
-
-To show a project bar, run a following command:
+Thirdly, start your VIM editor in the project directory.
 >
-    :CMakePro
+    $ vim
 <
-
+Fourthly, You can generate a cmake content for VIM by this command:
+>
+    :CMakeGen <build dir>
+<
+Show the project bar by the command:
+>
+    :CMakeBar
+<
 Press <Space> over a directory to hide/show its contents. Press <Space> over a
 file to open it.
 
 ------------------------------------------------------------------------------
 COMMANDS                                                *cmake-project-commands*
 
-:CMake {project-directory}                                              *:CMake*
-    Generate a cmake project and show a project bar.
+:CMakeGen {build-directory}                                          *:CMakeGen*
+    Generate a cmake project content for VIM.
 
-:CMakePro                                                            *:CMakePro*
+:CMakeBar                                                            *:CMakeBar*
     Show a project bar.
 
 ==============================================================================
 5. Configuration                                   *cmake-project-configuration*
                 
-                                                     *g:cmake_project_build_dir*
-g:cmake_project_build_dir~
-Default: "build"
+                                                      *g:cmake_project_show_bar*
+g:cmake_project_show_bar~
+Default: 0
 
-By default, cmake will create a "build" folder in your project directory and
-generate its files there. But you can change this catalog by this variable.
+Enable this parameter to show the cmake project bar after starting.
 
 Example:
 >
-    let g:cmake_project_build_dir = "other directory"
+    let g:cmake_project_show_bar = 1
 <
 
-                                                  *g:cmake_project_window_width*
-g:cmake_project_window_width~
+                                                     *g:cmake_project_bar_width*
+g:cmake_project_bar_width~
 Default: 40
 
 You can change CMake Project panel width by this variable.
 
 Example:
 >
-    let g:cmake_project_window_width = 40
+    let g:cmake_project_bar_width = 40
 <
-
 ==============================================================================
 6. History                                               *cmake-project-history*
+
+2.0.0 (2014-02-21)
+    - Second major release. All code had been rewritten in Python. Interface
+      and configuration paramters was simplified.
 
 1.0.0 (2012-10-21)
     - First major release.
@@ -114,14 +121,16 @@ Example:
 ==============================================================================
 7. Todo                                                     *cmake-project-todo*
 
-    - Other cmake project files support.
+    - Other cmake project files support. // Completed in 2.0.0!
+    - Please send your feature requests to my github project
+      https://github.com/Ignotus/vim-cmake-project
 
 ==============================================================================
 8. Credits                                               *cmake-project-credits*
 
 CMake-project was written by Minh Ngo and is released under the BSD License.
 
-    Copyright (C) 2012 Minh Ngo <nlminhtl@gmail.com>
+    Copyright (C) 2012-2014 Minh Ngo <nlminhtl@gmail.com>
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),

@@ -58,6 +58,7 @@ class Prop:
 create_tree_node = lambda: ({}, Set(), Prop(True))
 
 s_cmake_project_node_dict = {}
+s_cmake_project_file_dict = {}
 s_cmake_project_file_tree = create_tree_node()
 EOF
 
@@ -110,7 +111,7 @@ for file in files:
         current_tree_ref = directories[path]
 
     _, files, _ = current_tree_ref
-    files.add(file_name)
+    files.add((file_name, file))
 
 EOF
 
@@ -134,10 +135,11 @@ folder_close_symbol = vim.eval('g:cmake_project_folder_close_symbol')
 
 def process_folder(i_directory, i_recursion_level):
     directories, files, _ = i_directory
-    for file_name in sorted(files, key = lambda item: (int(item.partition(' ')[0])
-                                                       if item[0].isdigit() else float('inf'), item)):
+    for (file_name, full_path) in sorted(files, key = lambda item: (int(item.partition(' ')[0])
+                                                                    if item[0].isdigit() else float('inf'), item)):
         text = '   ' * i_recursion_level
         text += file_name
+        s_cmake_project_file_dict[len(vim.current.buffer)] = full_path
         vim.current.buffer.append(text)
     
 
@@ -162,9 +164,14 @@ endfunction
 
 
 function! s:cmake_show_bar()
-    vnew
-    badd CMakeProject
-    buffer CMakeProject
+    try
+        bdelete @CMakeProject
+    catch
+    endtry
+
+    topleft vsplit
+    badd @CMakeProject
+    buffer @CMakeProject
     setlocal buftype=nofile
     exec 'vertical' 'resize ' . g:cmake_project_bar_width
     setlocal modifiable
@@ -201,8 +208,17 @@ def show():
         vim.command('hide')
         vim.command('call s:cmake_show_bar()')
 
+get_file_path = lambda: s_cmake_project_file_dict[current_row]
+
 def open():
-    pass
+    vim.command('wincmd l')
+
+    file_path = get_file_path()
+    vim.command('badd ' + file_path) 
+    vim.command('buffer ' + file_path)
+    vim.command('setlocal switchbuf=useopen')
+    vim.command('sbuffer @CMakeProject')
+
 
 if non_spaces:
     if non_spaces[0] == folder_open_symbol:
