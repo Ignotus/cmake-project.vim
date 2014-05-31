@@ -84,13 +84,10 @@ import vim
 import glob
 import xml.etree.ElementTree as ET
 
-cm_files_rel_dir = vim.eval('a:i_directory')
 current_dir = vim.eval('s:cmake_project_directory')
 current_dir_len = len(current_dir) + 1
 
-cmake_files_folder = current_dir + '/' + cm_files_rel_dir + '/'
-
-project_file = glob.glob(cmake_files_folder + '*.cbp')[0]
+project_file = glob.glob('*.cbp')[0]
 tree = ET.parse(project_file)
 root = tree.getroot()
 
