@@ -69,14 +69,14 @@ command -nargs=0 -bar CMakeBar call s:cmake_show_bar()
 map <Space> :call g:cmake_on_space_clicked()<CR>
 
 " Implementation
-function! s:run_cmake(i_directory)
+function! s:run_cmake(i_directory) abort
     exec 'cd' a:i_directory
     exec '!cmake' "-G\"CodeBlocks - Unix Makefiles\" " . s:cmake_project_directory
     exec 'cd' s:cmake_project_directory
 endfunction
 
 
-function! s:gen_file_tree(i_directory)
+function! s:gen_file_tree(i_directory) abort
     exec 'cd' a:i_directory
 
 python << EOF
@@ -116,14 +116,14 @@ EOF
 endfunction
 
 
-function! s:cmake_gen_project(i_directory)
+function! s:cmake_gen_project(i_directory) abort
     let s:cmake_project_directory = getcwd()
     call s:run_cmake(a:i_directory)
     call s:gen_file_tree(a:i_directory)
 endfunction
 
 
-function! s:cmake_print_file_tree()
+function! s:cmake_print_file_tree() abort
 
 python << EOF
 
@@ -160,7 +160,7 @@ EOF
 endfunction
 
 
-function! s:cmake_show_bar()
+function! s:cmake_show_bar() abort
     try
         bdelete @CMakeProject
     catch
@@ -182,7 +182,7 @@ function! s:cmake_show_bar()
 endfunction
 
 
-function! g:cmake_on_space_clicked()
+function! g:cmake_on_space_clicked() abort
     if !exists('s:cmake_project_bufname') || bufname('%') != s:cmake_project_bufname
         return
     endif
