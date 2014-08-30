@@ -66,7 +66,7 @@ EOF
 " Interface
 command -nargs=1 -complete=file CMakeGen call s:cmake_gen_project(<f-args>)
 command -nargs=0 -bar CMakeBar call s:cmake_show_bar()
-map <Space> :call g:cmake_on_space_clicked()<CR>
+map <Space> :call Cmake_on_space_clicked()<CR>
 
 " Implementation
 function! s:run_cmake(i_directory) abort
@@ -182,7 +182,7 @@ function! s:cmake_show_bar() abort
 endfunction
 
 
-function! g:cmake_on_space_clicked() abort
+function! Cmake_on_space_clicked() abort
     if !exists('s:cmake_project_bufname') || bufname('%') != s:cmake_project_bufname
         return
     endif
