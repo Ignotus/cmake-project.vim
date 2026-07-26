@@ -1,0 +1,10 @@
+{
+  "name": "mylib",
+  "id": "mylib::@6890427a1f51a3e7e1df",
+  "type": "STATIC_LIBRARY",
+  "paths": { "source": ".", "build": "." },
+  "sources": [
+    { "path": "src/lib/mylib.cpp", "compileGroupIndex": 0, "sourceGroupIndex": 0 },
+    { "path": "include/mylib/mylib.h", "sourceGroupIndex": 1, "fileSetIndex": 0 }
+  ]
+}

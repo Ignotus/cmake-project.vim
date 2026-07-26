@@ -1,0 +1,22 @@
+{
+  "kind": "codemodel",
+  "version": { "major": 2, "minor": 6 },
+  "paths": {
+    "source": "/foreign/src",
+    "build": "/foreign/build"
+  },
+  "configurations": [
+    {
+      "name": "",
+      "targets": [
+        {
+          "name": "foreign",
+          "id": "foreign::@0",
+          "directoryIndex": 0,
+          "projectIndex": 0,
+          "jsonFile": "target-foreign-1.json"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+" ---------------------------------------------------------------- relativize
+
+Execute (relativize: a already-relative path is returned unchanged):
+  AssertEqual 'src/a.cpp', cmakeproject#tree#relativize('/src', 'src/a.cpp')
+
+Execute (relativize: leading ./ is stripped):
+  AssertEqual 'a.cpp', cmakeproject#tree#relativize('/src', './a.cpp')
+  AssertEqual 'a.cpp', cmakeproject#tree#relativize('/src', './././a.cpp')
+
+Execute (relativize: an absolute in-tree path becomes relative):
+  AssertEqual 'a/b.cpp', cmakeproject#tree#relativize('/src', '/src/a/b.cpp')
+
+Execute (relativize: a trailing slash on root is tolerated):
+  AssertEqual 'a.cpp', cmakeproject#tree#relativize('/src/', '/src/a.cpp')
+  AssertEqual 'a.cpp', cmakeproject#tree#relativize('/src///', '/src/a.cpp')
+
+Execute (relativize: an out-of-tree path is rejected, not mangled):
+  Assert cmakeproject#tree#relativize('/src', '/other/x.cpp') is v:null
+
+Execute (relativize: /srcfoo is not inside /src -- the blind-strip bug):
+  " 2.x sliced off len(root)+1 bytes unconditionally, turning this into
+  " 'oo/x.cpp'. It must be rejected instead.
+  Assert cmakeproject#tree#relativize('/src', '/srcfoo/x.cpp') is v:null
+
+Execute (relativize: the root directory itself is not a file):
+  Assert cmakeproject#tree#relativize('/src', '/src') is v:null
+  Assert cmakeproject#tree#relativize('/src', '/src/') is v:null
+
+Execute (relativize: an empty root rejects absolute paths):
+  Assert cmakeproject#tree#relativize('', '/x.cpp') is v:null
+
+Execute (relativize: windows drive paths are absolute and normalised):
+  AssertEqual 'a/b.cpp',
+        \ cmakeproject#tree#relativize('C:\src', 'C:\src\a\b.cpp')
+  Assert cmakeproject#tree#relativize('C:\src', 'D:\other\x.cpp') is v:null
+
+" --------------------------------------------------------------------- build
+
+Execute (build: nests three levels deep):
+  let g:t = cmakeproject#tree#build('/src', ['a/b/c/d.cpp'])
+  AssertEqual ['a'], keys(g:t.dirs)
+  AssertEqual ['b'], keys(g:t.dirs.a.dirs)
+  AssertEqual ['c'], keys(g:t.dirs.a.dirs.b.dirs)
+  AssertEqual 'a/b/c', g:t.dirs.a.dirs.b.dirs.c.path
+  AssertEqual 1, len(g:t.dirs.a.dirs.b.dirs.c.files)
+  AssertEqual 'd.cpp', g:t.dirs.a.dirs.b.dirs.c.files[0].name
+  AssertEqual 'a/b/c/d.cpp', g:t.dirs.a.dirs.b.dirs.c.files[0].path
+  AssertEqual '/src/a/b/c/d.cpp', g:t.dirs.a.dirs.b.dirs.c.files[0].abs
+
+Execute (build: files at the root land on the root node):
+  let g:t = cmakeproject#tree#build('/src', ['CMakeLists.txt'])
+  AssertEqual {}, g:t.dirs
+  AssertEqual 'CMakeLists.txt', g:t.files[0].name
+
+Execute (build: duplicate paths collapse to one entry):
+  " The File API emits the same source once per configuration.
+  let g:t = cmakeproject#tree#build('/src',
+        \ ['a.cpp', 'a.cpp', '/src/a.cpp', './a.cpp'])
+  AssertEqual 1, len(g:t.files)
+
+Execute (build: out-of-tree paths are dropped):
+  let g:t = cmakeproject#tree#build('/src', ['a.cpp', '/usr/include/stdio.h'])
+  AssertEqual 1, len(g:t.files)
+  AssertEqual 'a.cpp', g:t.files[0].name
+
+Execute (build: result is independent of insertion order):
+  let g:opts = cmakeproject#tree#default_opts()
+  let g:one = cmakeproject#tree#flatten(
+        \ cmakeproject#tree#build('/src', ['b/y.cpp', 'a/x.cpp', 'z.cpp']),
+        \ {}, g:opts)
+  let g:two = cmakeproject#tree#flatten(
+        \ cmakeproject#tree#build('/src', ['z.cpp', 'a/x.cpp', 'b/y.cpp']),
+        \ {}, g:opts)
+  AssertEqual g:one.lines, g:two.lines
+
+Execute (build: paths containing spaces survive intact):
+  let g:t = cmakeproject#tree#build('/src', ['my dir/my file.cpp'])
+  AssertEqual 'my file.cpp', g:t.dirs['my dir'].files[0].name
+  AssertEqual '/src/my dir/my file.cpp', g:t.dirs['my dir'].files[0].abs
+
+" ------------------------------------------------------------------- compare
+
+Execute (compare: is case-insensitive):
+  AssertEqual -1, cmakeproject#tree#compare('apple', 'Banana')
+  AssertEqual 1, cmakeproject#tree#compare('Banana', 'apple')
+
+Execute (compare: is numeric-aware, so a2 precedes a10):
+  AssertEqual -1, cmakeproject#tree#compare('a2', 'a10')
+  AssertEqual 1, cmakeproject#tree#compare('a10', 'a2')
+  AssertEqual 0, cmakeproject#tree#compare('a2', 'a2')
+
+Execute (compare: sorts a whole list naturally):
+  AssertEqual ['file1.c', 'file2.c', 'file10.c'],
+        \ sort(['file10.c', 'file2.c', 'file1.c'],
+        \      function('cmakeproject#tree#compare'))
+
+Execute (compare: an all-digit name does not crash -- 2.x raised here):
+  AssertEqual -1, cmakeproject#tree#compare('1', '2')
+  AssertEqual -1, cmakeproject#tree#compare('9', '10')
+
+" ------------------------------------------------------------------- flatten
+
+Execute (flatten: lines and index stay in lockstep):
+  let g:t = cmakeproject#tree#build('/src',
+        \ ['a/b/x.cpp', 'a/y.cpp', 'z.cpp', 'CMakeLists.txt'])
+  let g:f = cmakeproject#tree#flatten(g:t, {}, cmakeproject#tree#default_opts())
+  AssertEqual len(g:f.lines), len(g:f.index)
+
+Execute (flatten: directories precede files, indented by depth):
+  let g:t = cmakeproject#tree#build('/src', ['a/b/x.cpp', 'a/y.cpp', 'z.cpp'])
+  let g:f = cmakeproject#tree#flatten(g:t, {}, cmakeproject#tree#default_opts())
+  AssertEqual [
+        \ '-a',
+        \ '   -b',
+        \ '       x.cpp',
+        \ '    y.cpp',
+        \ ' z.cpp',
+        \ ], g:f.lines
+
+Execute (flatten: index entries describe each line):
+  let g:t = cmakeproject#tree#build('/src', ['a/x.cpp'])
+  let g:f = cmakeproject#tree#flatten(g:t, {}, cmakeproject#tree#default_opts())
+  AssertEqual {'kind': 'dir', 'path': 'a'}, g:f.index[0]
+  AssertEqual 'file', g:f.index[1].kind
+  AssertEqual 'a/x.cpp', g:f.index[1].path
+  AssertEqual '/src/a/x.cpp', g:f.index[1].abs
+
+Execute (flatten: a collapsed directory hides its subtree and its index rows):
+  let g:t = cmakeproject#tree#build('/src', ['a/b/x.cpp', 'a/y.cpp', 'z.cpp'])
+  let g:f = cmakeproject#tree#flatten(g:t, {'a': 1},
+        \ cmakeproject#tree#default_opts())
+  AssertEqual ['+a', ' z.cpp'], g:f.lines
+  AssertEqual 2, len(g:f.index)
+  AssertEqual 'z.cpp', g:f.index[1].abs[-5:]
+
+Execute (flatten: a nested directory can be collapsed on its own):
+  let g:t = cmakeproject#tree#build('/src', ['a/b/x.cpp', 'a/y.cpp'])
+  let g:f = cmakeproject#tree#flatten(g:t, {'a/b': 1},
+        \ cmakeproject#tree#default_opts())
+  AssertEqual ['-a', '   +b', '    y.cpp'], g:f.lines
+
+Execute (flatten: custom fold symbols are honoured):
+  let g:opts = cmakeproject#tree#default_opts()
+  let g:opts.open_symbol = 'v '
+  let g:opts.close_symbol = '> '
+  let g:t = cmakeproject#tree#build('/src', ['a/x.cpp', 'b/y.cpp'])
+  let g:f = cmakeproject#tree#flatten(g:t, {'b': 1}, g:opts)
+  AssertEqual ['v a', '    x.cpp', '> b'], g:f.lines
+
+Execute (flatten: an empty tree yields nothing):
+  let g:f = cmakeproject#tree#flatten(cmakeproject#tree#new('', ''), {},
+        \ cmakeproject#tree#default_opts())
+  AssertEqual [], g:f.lines
+  AssertEqual [], g:f.index
+
+Execute (flatten: a stale collapsed key for a vanished directory is harmless):
+  let g:t = cmakeproject#tree#build('/src', ['a/x.cpp'])
+  let g:f = cmakeproject#tree#flatten(g:t, {'gone/away': 1},
+        \ cmakeproject#tree#default_opts())
+  AssertEqual ['-a', '    x.cpp'], g:f.lines

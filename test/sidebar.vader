@@ -1,0 +1,209 @@
+" Each case starts from one plain window and no loaded project. Only the
+" buffers this plugin created are wiped -- Vader runs out of a buffer of its
+" own, and %bwipeout would take it with us.
+Before:
+  silent! call cmakeproject#sidebar#close()
+  silent! only
+  for s:b in range(1, bufnr('$'))
+    if bufexists(s:b) && bufname(s:b) =~# '@CMakeProject\|/fixture/'
+      execute 'silent! bwipeout!' s:b
+    endif
+  endfor
+  call cmakeproject#reset()
+  let g:fx = g:cmakeproject_test_root . '/test/fixtures'
+
+After:
+  silent! call cmakeproject#sidebar#close()
+  silent! only
+  call cmakeproject#reset()
+
+" ---------------------------------------------------------------------- open
+
+Execute (open: creates a scratch sidebar of the configured width):
+  let g:cmake_project_bar_width = 30
+  call cmakeproject#sidebar#open()
+  AssertEqual 'nofile', &buftype
+  AssertEqual 'cmakeproject', &filetype
+  AssertEqual 30, winwidth(0)
+  Assert &winfixwidth, 'winfixwidth keeps <C-w>= from squashing the bar'
+  Assert !&modifiable, 'the tree must not be editable'
+  Assert !&buflisted, 'the sidebar should stay out of :ls'
+  AssertEqual '@CMakeProject', fnamemodify(bufname('%'), ':t')
+  let g:cmake_project_bar_width = 40
+
+Execute (open: with nothing loaded, explains what to run):
+  call cmakeproject#sidebar#open()
+  AssertEqual ['" no CMake project loaded', '" :CMakeGen <build-dir>'],
+        \ getline(1, '$')
+
+Execute (open: is idempotent and reuses the same buffer):
+  call cmakeproject#sidebar#open()
+  let g:first = bufnr('%')
+  let g:windows = winnr('$')
+  wincmd p
+  call cmakeproject#sidebar#open()
+  AssertEqual g:first, bufnr('%')
+  AssertEqual g:windows, winnr('$')
+
+Execute (open: installs buffer-local mappings only):
+  call cmakeproject#sidebar#open()
+  Assert !empty(maparg('<Space>', 'n', 0, 1)),
+        \ '<Space> should be mapped in the sidebar'
+  Assert maparg('<Space>', 'n', 0, 1).buffer,
+        \ 'the mapping must be buffer-local, not global'
+
+Execute (open: <Space> is untouched everywhere else):
+  call cmakeproject#sidebar#open()
+  wincmd p
+  AssertEqual '', maparg('<Space>', 'n')
+  AssertEqual '', maparg('<Space>', 'v')
+  AssertEqual '', maparg('<Space>', 'o')
+
+" -------------------------------------------------------------- close/toggle
+
+Execute (close: leaves the other window focused):
+  call cmakeproject#sidebar#open()
+  call cmakeproject#sidebar#close()
+  Assert !cmakeproject#sidebar#is_open()
+  AssertNotEqual 'cmakeproject', &filetype
+
+Execute (toggle: opens then closes):
+  call cmakeproject#sidebar#toggle()
+  Assert cmakeproject#sidebar#is_open()
+  call cmakeproject#sidebar#toggle()
+  Assert !cmakeproject#sidebar#is_open()
+
+" -------------------------------------------------------------------- render
+
+Execute (render: draws the loaded tree):
+  Assert cmakeproject#load(g:fx . '/buildtree'), 'load should succeed'
+  call cmakeproject#sidebar#open()
+  AssertEqual [
+        \ '-cmake',
+        \ '    FindFoo.cmake',
+        \ '-include',
+        \ '   -mylib',
+        \ '       mylib.h',
+        \ '-src',
+        \ '   -app',
+        \ '       window.cpp',
+        \ '       window.h',
+        \ '   -lib',
+        \ '       mylib.cpp',
+        \ '       release_only.cpp',
+        \ '    CMakeLists.txt',
+        \ '    main.cpp',
+        \ ' CMakeLists.txt',
+        \ ], getline(1, '$')
+  AssertEqual len(getline(1, '$')), len(b:cmakeproject_index)
+
+Execute (render: does not clobber the unnamed or numbered registers):
+  call setreg('"', 'PRESERVED')
+  call setreg('1', 'ALSO-PRESERVED')
+  call cmakeproject#load(g:fx . '/buildtree')
+  call cmakeproject#sidebar#open()
+  normal! gg
+  call cmakeproject#sidebar#activate()
+  call cmakeproject#sidebar#activate()
+  AssertEqual 'PRESERVED', getreg('"')
+  AssertEqual 'ALSO-PRESERVED', getreg('1')
+
+" ------------------------------------------------------------------ activate
+
+Execute (activate: collapsing a directory hides its children):
+  call cmakeproject#load(g:fx . '/buildtree')
+  call cmakeproject#sidebar#open()
+  " line 6 is '-src'
+  call cursor(6, 1)
+  call cmakeproject#sidebar#activate()
+  AssertEqual 1, get(cmakeproject#state().collapsed, 'src', 0)
+  AssertEqual '+src', getline(6)
+  AssertEqual 6, line('.')
+  Assert index(getline(1, '$'), '       window.cpp') < 0,
+        \ 'children of a collapsed directory must not be drawn'
+
+Execute (activate: expanding restores the children):
+  call cmakeproject#load(g:fx . '/buildtree')
+  call cmakeproject#sidebar#open()
+  call cursor(6, 1)
+  call cmakeproject#sidebar#activate()
+  call cmakeproject#sidebar#activate()
+  AssertEqual '-src', getline(6)
+  Assert index(getline(1, '$'), '       window.cpp') >= 0
+
+Execute (activate: fold state survives a full reload -- the 2.x regression):
+  call cmakeproject#load(g:fx . '/buildtree')
+  call cmakeproject#sidebar#open()
+  call cursor(6, 1)
+  call cmakeproject#sidebar#activate()
+  AssertEqual '+src', getline(6)
+  " Rebuilding the tree must not disturb the path-keyed fold state.
+  call cmakeproject#refresh()
+  call cmakeproject#sidebar#open()
+  AssertEqual '+src', getline(6)
+
+Execute (activate: a placeholder line does nothing):
+  call cmakeproject#sidebar#open()
+  call cursor(1, 1)
+  call cmakeproject#sidebar#activate()
+  AssertEqual ['" no CMake project loaded', '" :CMakeGen <build-dir>'],
+        \ getline(1, '$')
+
+" --------------------------------------------------------------- opening files
+
+Execute (activate: opens a file in a window that is not the sidebar):
+  call cmakeproject#load(g:fx . '/buildtree')
+  call cmakeproject#sidebar#open()
+  " line 15 is the top-level ' CMakeLists.txt'
+  call cursor(15, 1)
+  call cmakeproject#sidebar#activate()
+  AssertEqual '/fixture/src/CMakeLists.txt', expand('%:p')
+  AssertNotEqual 'cmakeproject', &filetype
+  Assert cmakeproject#sidebar#is_open(), 'the sidebar should stay open'
+
+Execute (activate: picks a sane window when a horizontal split exists):
+  " This is the case 2.x's `wincmd l` got wrong.
+  split
+  call cmakeproject#load(g:fx . '/buildtree')
+  call cmakeproject#sidebar#open()
+  call cursor(15, 1)
+  call cmakeproject#sidebar#activate()
+  AssertEqual '/fixture/src/CMakeLists.txt', expand('%:p')
+  AssertNotEqual 'nofile', &buftype
+
+Execute (activate: creates a window when the sidebar is the only one):
+  call cmakeproject#load(g:fx . '/buildtree')
+  call cmakeproject#sidebar#open()
+  only
+  Assert cmakeproject#sidebar#is_open()
+  call cursor(15, 1)
+  call cmakeproject#sidebar#activate()
+  AssertEqual '/fixture/src/CMakeLists.txt', expand('%:p')
+  AssertEqual 2, winnr('$')
+  Assert !&winfixwidth,
+        \ 'the sidebar window options must not leak into the new window'
+
+Execute (activate: does not permanently change the global switchbuf):
+  " 2.x ran `setlocal switchbuf=useopen`, which silently rewrote a
+  " global-only option for the rest of the session.
+  let g:before = &switchbuf
+  call cmakeproject#load(g:fx . '/buildtree')
+  call cmakeproject#sidebar#open()
+  call cursor(15, 1)
+  call cmakeproject#sidebar#activate()
+  AssertEqual g:before, &switchbuf
+
+" --------------------------------------------------------------------- state
+
+Execute (load: a failure leaves a clear message and no tree):
+  let g:ok = cmakeproject#load(g:fx . '/nonexistent')
+  AssertEqual 0, g:ok
+  AssertEqual {}, cmakeproject#state().tree
+
+Execute (refresh: with nothing loaded reports rather than throwing):
+  AssertEqual 0, cmakeproject#refresh()
+
+Execute (load: never changes the working directory):
+  let g:cwd = getcwd()
+  call cmakeproject#load(g:fx . '/buildtree')
+  AssertEqual g:cwd, getcwd()

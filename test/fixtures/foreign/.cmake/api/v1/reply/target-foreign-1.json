@@ -1,0 +1,9 @@
+{
+  "name": "foreign",
+  "id": "foreign::@0",
+  "type": "EXECUTABLE",
+  "paths": { "source": ".", "build": "." },
+  "sources": [
+    { "path": "foreign.cpp", "compileGroupIndex": 0 }
+  ]
+}

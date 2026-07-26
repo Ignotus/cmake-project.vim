@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "The same target under a second configuration. Its first two sources",
+    "duplicate the Debug object (they must collapse to one entry each), while",
+    "release_only.cpp must still appear -- the loader takes the union across",
+    "all configurations."
+  ],
+  "name": "mylib",
+  "id": "mylib::@6890427a1f51a3e7e1df",
+  "type": "STATIC_LIBRARY",
+  "paths": { "source": ".", "build": "." },
+  "sources": [
+    { "path": "src/lib/mylib.cpp", "compileGroupIndex": 0, "sourceGroupIndex": 0 },
+    { "path": "include/mylib/mylib.h", "sourceGroupIndex": 1, "fileSetIndex": 0 },
+    { "path": "src/lib/release_only.cpp", "compileGroupIndex": 0, "sourceGroupIndex": 0 }
+  ]
+}

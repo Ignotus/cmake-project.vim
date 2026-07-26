@@ -1,0 +1,22 @@
+{
+  "name": "app",
+  "id": "app::@6890427a1f51a3e7e1df",
+  "type": "EXECUTABLE",
+  "paths": { "source": ".", "build": "." },
+  "sources": [
+    { "path": "src/main.cpp", "compileGroupIndex": 0, "sourceGroupIndex": 0 },
+    { "path": "src/app/window.cpp", "compileGroupIndex": 0, "sourceGroupIndex": 0 },
+    { "path": "src/app/window.h", "sourceGroupIndex": 1 },
+    {
+      "_comment": "GENERATED: excluded, even though it sits under the source dir",
+      "path": "src/generated/config.cpp",
+      "isGenerated": true,
+      "compileGroupIndex": 0
+    },
+    {
+      "_comment": "outside the source tree: dropped rather than name-mangled",
+      "path": "/usr/include/external/ext.h",
+      "sourceGroupIndex": 1
+    }
+  ]
+}

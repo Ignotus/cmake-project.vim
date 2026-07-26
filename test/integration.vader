@@ -1,0 +1,116 @@
+" End-to-end coverage against a real cmake. Self-skips where cmake is missing
+" or broken, so the fixture-driven suites still run everywhere.
+"
+" Vader sources Execute blocks as scripts rather than functions, so each case
+" is wrapped in `if g:cmake_ok` instead of returning early.
+
+Execute (integration: configure the fixture project with a real cmake):
+  let g:cmake_ok = 0
+  let g:cmake_bin = get(g:, 'cmake_project_cmake_program', 'cmake')
+  if executable(g:cmake_bin)
+    call system(shellescape(g:cmake_bin) . ' --version')
+    let g:cmake_ok = (v:shell_error == 0)
+  endif
+
+  if !g:cmake_ok
+    Log 'skipping integration tests: no working cmake on PATH'
+  else
+    call cmakeproject#reset()
+    let g:proj = g:cmakeproject_test_root . '/test/fixtures/project'
+    let g:bld = tempname()
+    let g:saved_cwd = getcwd()
+
+    " :CMakeGen takes the source directory from the current working directory.
+    execute 'cd' fnameescape(g:proj)
+    try
+      let g:gen_ok = cmakeproject#gen(g:bld)
+    finally
+      execute 'cd' fnameescape(g:saved_cwd)
+    endtry
+
+    Assert g:gen_ok, 'CMakeGen failed: ' . cmakeproject#state().last_output
+    AssertEqual g:saved_cwd, getcwd()
+  endif
+
+Execute (integration: cmake wrote a File API reply we can find):
+  if g:cmake_ok
+    Assert filereadable(g:bld . '/.cmake/api/v1/query/'
+          \ . 'client-vim-cmake-project/codemodel-v2'), 'query file missing'
+    Assert !empty(cmakeproject#fileapi#index_file(g:bld)), 'no reply index'
+  endif
+
+Execute (integration: the tree holds the project's real sources):
+  if g:cmake_ok
+    let g:f = cmakeproject#tree#flatten(cmakeproject#state().tree, {},
+          \ cmakeproject#tree#default_opts())
+    AssertEqual [
+          \ '-src',
+          \ '   -util',
+          \ '       util.cpp',
+          \ '       util.h',
+          \ '    CMakeLists.txt',
+          \ '    main.cpp',
+          \ ' CMakeLists.txt',
+          \ ], g:f.lines
+  endif
+
+Execute (integration: the recorded root is the fixture source directory):
+  if g:cmake_ok
+    AssertEqual resolve(g:proj), resolve(cmakeproject#state().root)
+  endif
+
+Execute (integration: absolute paths in the tree point at files that exist):
+  if g:cmake_ok
+    let g:f = cmakeproject#tree#flatten(cmakeproject#state().tree, {},
+          \ cmakeproject#tree#default_opts())
+    for g:entry in g:f.index
+      if get(g:entry, 'kind', '') ==# 'file'
+        Assert filereadable(g:entry.abs), 'not on disk: ' . g:entry.abs
+      endif
+    endfor
+  endif
+
+Execute (integration: :CMakeLoad re-reads the build tree without cmake):
+  if g:cmake_ok
+    let g:before = cmakeproject#tree#flatten(cmakeproject#state().tree, {},
+          \ cmakeproject#tree#default_opts()).lines
+    call cmakeproject#reset()
+    Assert cmakeproject#load(g:bld), ':CMakeLoad on an existing build tree'
+    let g:after = cmakeproject#tree#flatten(cmakeproject#state().tree, {},
+          \ cmakeproject#tree#default_opts()).lines
+    AssertEqual g:before, g:after
+  endif
+
+Execute (integration: the sidebar renders the real project):
+  if g:cmake_ok
+    call cmakeproject#sidebar#open()
+    AssertEqual '-src', getline(1)
+    AssertEqual ' CMakeLists.txt', getline('$')
+    call cmakeproject#sidebar#close()
+  endif
+
+Execute (integration: a cmake failure is reported, not thrown):
+  if g:cmake_ok
+    let g:broken = tempname()
+    call mkdir(g:broken, 'p')
+    call writefile(['this is not valid cmake syntax ((('],
+          \ g:broken . '/CMakeLists.txt')
+    let g:saved_cwd = getcwd()
+    execute 'cd' fnameescape(g:broken)
+    try
+      let g:ok = cmakeproject#gen(tempname())
+    finally
+      execute 'cd' fnameescape(g:saved_cwd)
+    endtry
+    AssertEqual 0, g:ok, 'a broken project must not report success'
+    Assert !empty(cmakeproject#state().last_output),
+          \ 'cmake stderr must be captured for :CMakeOutput'
+    AssertEqual g:saved_cwd, getcwd()
+    call delete(g:broken, 'rf')
+  endif
+
+Execute (integration: clean up):
+  if g:cmake_ok
+    call cmakeproject#reset()
+    call delete(g:bld, 'rf')
+  endif

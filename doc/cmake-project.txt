@@ -1,22 +1,24 @@
-*cmake-project.txt*   CMake project management plugin 
+*cmake-project.txt*   CMake project management plugin
 
 Author:         Minh Ngo <minh@fedoraproject.org>
-Licence:        BSD
+Licence:        MIT
 Homepage:       http://github.com/Ignotus/vim-cmake-project
-Version:        2.0.0
+Version:        3.0.0
 
 ==============================================================================
 Contents                                  *cmake-project* *cmake-project-contents*
 
          1. Intro ........................... |cmake-project-intro|
-         2. Requirements .................... |cmake-project-requirements|
-         3. Installation .................... |cmake-project-installation|
-         4. Usage ........................... |cmake-project-usage|
+         2. Upgrading from 2.x .............. |cmake-project-upgrading|
+         3. Requirements .................... |cmake-project-requirements|
+         4. Installation .................... |cmake-project-installation|
+         5. Usage ........................... |cmake-project-usage|
                 Commands .................... |cmake-project-commands|
-         5. Configuration ................... |cmake-project-configuration|
-         6. History ......................... |cmake-project-history|
-         7. Todo ............................ |cmake-project-todo|
-         8. Credits ......................... |cmake-project-credits|
+                Mappings .................... |cmake-project-mappings|
+         6. Configuration ................... |cmake-project-configuration|
+         7. Limitations ..................... |cmake-project-limitations|
+         8. History ......................... |cmake-project-history|
+         9. Credits ......................... |cmake-project-credits|
 
 ==============================================================================
 1. Intro                                                   *cmake-project-intro*
@@ -24,69 +26,167 @@ Contents                                  *cmake-project* *cmake-project-content
 CMake-Project is a plugin for cmake projects effective management. It provides
 a sidebar that shows files in the tree view.
 
-==============================================================================
-2. Requirements                                     *cmake-project-requirements*
-
-You need to have the VIM editor that supports python scripting. You can check
-it by this command in a console:
-
-    $ vim --version |grep +python
-    +cryptv          +linebreak       +python/dyn      +viminfo
+The file list comes from the CMake File API, so it reflects what CMake
+actually knows about your project rather than a directory scan: every source
+declared by every target, in every configuration, plus your CMakeLists.txt
+files.
 
 ==============================================================================
-3. Installation                                     *cmake-project-installation*
+2. Upgrading from 2.x                                  *cmake-project-upgrading*
 
-Change your current directory to the plugin root archive directory and use
-install methods:
->
+Version 3.0.0 is a rewrite. Read this section before upgrading.
+
+<Space> IS NO LONGER A GLOBAL MAPPING~
+
+2.x installed `map <Space>` unconditionally. That mapping was recursive, was
+not <silent>, and applied in normal, visual, select and operator-pending mode
+in *every* buffer -- so `d<Space>` and plain cursor movement were affected
+everywhere, not just in the sidebar.
+
+<Space> is now a buffer-local |nnoremap| that exists only inside the sidebar.
+If you want a global key, map one of the |cmake-project-plug-mappings|
+yourself, for example: >
+
+    nmap <F2> <Plug>(cmake-project-bar-toggle)
+<
+NO PYTHON, AND A DIFFERENT CMAKE INTERFACE~
+
+2.x needed a Vim built with the Python 2 interface (`+python`), which no
+current Vim provides and Neovim never had. 3.0.0 is pure Vim script.
+
+2.x also ran the "CodeBlocks - Unix Makefiles" generator and parsed its .cbp
+XML. That generator is deprecated in CMake, and its siblings have already been
+removed. 3.0.0 uses the supported CMake File API instead, which works with any
+generator -- Unix Makefiles, Ninja, Xcode, Visual Studio.
+
+WHAT THE SIDEBAR SHOWS HAS CHANGED~
+
+See |cmake-project-limitations|. The short version: headers that no target
+mentions no longer appear, generated sources are excluded, and files outside
+the source tree are skipped rather than shown under a mangled name.
+
+The working directory is no longer changed. 2.x did a global |:cd| into the
+build directory and back on every :CMakeGen; if anything failed in between you
+were left there. Directories are now passed to cmake with -S and -B.
+
+Folder order is now deterministic (directories first, then files, both sorted
+case-insensitively and numerically, so file2.c precedes file10.c). 2.x
+rendered files first and folders in hash order.
+
+==============================================================================
+3. Requirements                                     *cmake-project-requirements*
+
+    - Vim 8.1 or newer, or any Neovim. No Python is required.
+    - CMake 3.14 or newer, for the File API.
+
+==============================================================================
+4. Installation                                     *cmake-project-installation*
+
+With vim-plug: >
+
+    Plug 'Ignotus/vim-cmake-project'
+<
+With lazy.nvim: >
+
+    { 'Ignotus/vim-cmake-project', cmd = { 'CMakeGen', 'CMakeBar' } }
+<
+With packer.nvim: >
+
+    use 'Ignotus/vim-cmake-project'
+<
+With Vim's built-in package support: >
+
+    git clone https://github.com/Ignotus/vim-cmake-project \
+        ~/.vim/pack/plugins/start/vim-cmake-project
+<
+Or from a checkout: >
+
     make install
 <
+You can specify a destination install directory: >
 
-You can specify a destination install directory by following methods:
->
     make install DESTDIR=/opt/vim
 <
-
 By default, DESTDIR is equal to ~/.vim/
 
 ==============================================================================
-4. Usage                                                   *cmake-project-usage*
+5. Usage                                                   *cmake-project-usage*
 
-First of all, you should go to the cmake project directory.
->
-    $ cd <project directory>
+Start Vim in your project's source directory -- the one holding the top-level
+CMakeLists.txt -- and configure a build directory: >
+
+    :CMakeGen build
 <
-Secondly, create a folder for cmake project build files.
->
-    $ mkdir <build dir>
-<
-Thirdly, start your VIM editor in the project directory.
->
-    $ vim
-<
-Fourthly, You can generate a cmake content for VIM by this command:
->
-    :CMakeGen <build dir>
-<
-Show the project bar by the command:
->
+Show the project bar: >
+
     :CMakeBar
 <
 Press <Space> over a directory to hide/show its contents. Press <Space> over a
 file to open it.
 
+Extra arguments to |:CMakeGen| are passed straight through to cmake: >
+
+    :CMakeGen build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+<
+After editing a CMakeLists.txt, re-run |:CMakeGen| (or just |:CMakeRefresh| if
+something else has already re-run cmake for you). Folds you have collapsed are
+keyed by path and survive a reload.
+
 ------------------------------------------------------------------------------
 COMMANDS                                                *cmake-project-commands*
 
-:CMakeGen {build-directory}                                          *:CMakeGen*
-    Generate a cmake project content for VIM.
+:CMakeGen [{build-directory}] [{cmake-args}...]                      *:CMakeGen*
+    Configure {build-directory} with cmake and load the result. The source
+    directory is the current working directory. {build-directory} defaults to
+    the last one used, or "build". Any further arguments are passed to cmake
+    unchanged.
+
+:CMakeLoad [{build-directory}]                                      *:CMakeLoad*
+    Load an existing build directory without running cmake. Use this for a
+    tree configured elsewhere -- by `cmake --preset`, CLion or VS Code -- or
+    to pick up a reply written by a build you ran in a terminal.
+
+:CMakeRefresh                                                    *:CMakeRefresh*
+    Reload the build directory remembered from the last |:CMakeGen| or
+    |:CMakeLoad|.
 
 :CMakeBar                                                            *:CMakeBar*
     Show a project bar.
 
+:CMakeBarClose                                                  *:CMakeBarClose*
+    Close the project bar.
+
+:CMakeBarToggle                                                *:CMakeBarToggle*
+    Toggle the project bar.
+
+:CMakeOutput                                                      *:CMakeOutput*
+    Show the last cmake invocation and its full output in a scratch buffer.
+    Useful when a configure fails.
+
+------------------------------------------------------------------------------
+MAPPINGS                                                *cmake-project-mappings*
+
+These are buffer-local to the sidebar. Set |g:cmake_project_no_mappings| to
+suppress them.
+
+    <Space>     Toggle a directory, or open the file under the cursor.
+    <CR>        As <Space>.
+    o           As <Space>.
+    R           Reload the project (|:CMakeRefresh|).
+    q           Close the sidebar.
+
+                                                 *cmake-project-plug-mappings*
+No global keys are bound. These <Plug> mappings are available to bind
+yourself: >
+
+    <Plug>(cmake-project-bar-toggle)
+    <Plug>(cmake-project-bar-open)
+    <Plug>(cmake-project-refresh)
+    <Plug>(cmake-project-activate)
+<
 ==============================================================================
-5. Configuration                                   *cmake-project-configuration*
-                
+6. Configuration                                   *cmake-project-configuration*
+
                                                       *g:cmake_project_show_bar*
 g:cmake_project_show_bar~
 Default: 0
@@ -108,8 +208,93 @@ Example:
 >
     let g:cmake_project_bar_width = 40
 <
+
+                                            *g:cmake_project_folder_open_symbol*
+g:cmake_project_folder_open_symbol~
+Default: '-'
+
+The marker drawn before an expanded directory.
+
+Example:
+>
+    let g:cmake_project_folder_open_symbol = 'v '
+<
+
+                                           *g:cmake_project_folder_close_symbol*
+g:cmake_project_folder_close_symbol~
+Default: '+'
+
+The marker drawn before a collapsed directory.
+
+Example:
+>
+    let g:cmake_project_folder_close_symbol = '> '
+<
+
+                                                   *g:cmake_project_no_mappings*
+g:cmake_project_no_mappings~
+Default: 0
+
+Set this to 1 to suppress the sidebar's buffer-local mappings and bind your
+own. See |cmake-project-mappings|.
+
+Example:
+>
+    let g:cmake_project_no_mappings = 1
+<
+
+                                                 *g:cmake_project_cmake_program*
+g:cmake_project_cmake_program~
+Default: 'cmake'
+
+The cmake executable to run. Set this when cmake is not on your $PATH, or to
+choose between several installed versions.
+
+Example:
+>
+    let g:cmake_project_cmake_program = '/opt/cmake/bin/cmake'
+<
 ==============================================================================
-6. History                                               *cmake-project-history*
+7. Limitations                                       *cmake-project-limitations*
+
+The sidebar lists what CMake reports through the File API, which is not quite
+the same set of files 2.x showed:
+
+    - Headers appear only if some target mentions them, via `add_library()`,
+      `add_executable()`, `target_sources()` or a `FILE_SET HEADERS`. The 2.x
+      CodeBlocks generator found extra headers by scanning; the File API has
+      no equivalent, so a header no target names is invisible. Listing your
+      headers in the target is good practice anyway.
+
+    - Sources marked GENERATED are excluded.
+
+    - Files outside the top-level source directory are skipped. 2.x stripped a
+      fixed number of leading bytes from every path, so these appeared under
+      corrupted names.
+
+    - CMakeLists.txt and your own .cmake modules are included; CMake's own
+      modules and anything written into the build tree are not.
+
+|:CMakeGen| runs cmake synchronously, so Vim is blocked for the duration of a
+configure.
+
+==============================================================================
+8. History                                               *cmake-project-history*
+
+3.0.0
+    - Third major release. Rewritten in pure Vim script: no Python of any
+      kind, and Neovim is supported.
+    - The deprecated CodeBlocks generator and its XML have been replaced by
+      the CMake File API.
+    - <Space> is now buffer-local to the sidebar rather than a global mapping.
+      See |cmake-project-upgrading|.
+    - No longer changes the working directory.
+    - cmake failures are reported instead of leaving a broken state; see
+      |:CMakeOutput|.
+    - Collapsed folders survive a reload.
+    - New: |:CMakeLoad|, |:CMakeRefresh|, |:CMakeBarClose|, |:CMakeBarToggle|,
+      |:CMakeOutput|, |g:cmake_project_no_mappings|,
+      |g:cmake_project_cmake_program|, syntax highlighting for the sidebar.
 
 2.0.0 (2014-02-21)
     - Second major release. All code had been rewritten in Python. Interface
@@ -119,16 +304,9 @@ Example:
     - First major release.
 
 ==============================================================================
-7. Todo                                                     *cmake-project-todo*
+9. Credits                                               *cmake-project-credits*
 
-    - Other cmake project files support. // Completed in 2.0.0!
-    - Please send your feature requests to my github project
-      https://github.com/Ignotus/vim-cmake-project
-
-==============================================================================
-8. Credits                                               *cmake-project-credits*
-
-CMake-project was written by Minh Ngo and is released under the BSD License.
+CMake-project was written by Minh Ngo and is released under the MIT License.
 
     Copyright (C) 2012-2014 Minh Ngo <nlminhtl@gmail.com>
 
@@ -154,4 +332,4 @@ Thanks to the following people for code contributions, feature suggestions etc:
 Nikolay Pavlov (http://habrahabr.ru/users/ZyXI/)
 
 ==============================================================================
- vim: tw=78 ts=8 sw=4 sts=4 et ft=help  
+ vim: tw=78 ts=8 sw=4 sts=4 et ft=help

@@ -1,0 +1,31 @@
+{
+  "_comment": [
+    "A build tree configured by some other tool. There is no",
+    "client-vim-cmake-project entry and no shared top-level query, so the",
+    "loader must fall back to a foreign client's reply to make :CMakeLoad",
+    "work against build trees produced by CLion, VS Code or cmake --preset."
+  ],
+  "cmake": {
+    "version": {
+      "major": 3, "minor": 29, "patch": 2, "suffix": "",
+      "string": "3.29.2", "isDirty": false
+    },
+    "generator": { "multiConfig": false, "name": "Ninja" }
+  },
+  "objects": [
+    {
+      "kind": "codemodel",
+      "version": { "major": 2, "minor": 6 },
+      "jsonFile": "codemodel-v2-foreign.json"
+    }
+  ],
+  "reply": {
+    "client-cool-ide": {
+      "codemodel-v2": {
+        "kind": "codemodel",
+        "version": { "major": 2, "minor": 6 },
+        "jsonFile": "codemodel-v2-foreign.json"
+      }
+    }
+  }
+}

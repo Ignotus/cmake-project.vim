@@ -1,0 +1,3 @@
+A reply directory that exists but holds no index-*.json, as it would look
+before cmake has ever run with a query in place. Git does not track empty
+directories, hence this file.

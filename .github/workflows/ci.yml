@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [master, v3-rewrite]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.neovim && 'neovim' || 'vim' }} ${{ matrix.version }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Pinned to the documented floor so the requirement is enforced,
+          # not merely aspirational.
+          - { os: ubuntu-latest, neovim: false, version: v8.1.0100 }
+          - { os: ubuntu-latest, neovim: false, version: stable }
+          - { os: ubuntu-latest, neovim: true,  version: v0.7.0 }
+          - { os: ubuntu-latest, neovim: true,  version: stable }
+          - { os: macos-latest,  neovim: false, version: stable }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: junegunn/vader.vim
+          path: .deps/vader.vim
+
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          version: ${{ matrix.version }}
+          neovim: ${{ matrix.neovim }}
+
+      - name: Show cmake version
+        run: cmake --version || echo 'cmake unavailable; integration tests self-skip'
+
+      - name: Run tests
+        run: make test EDITOR_BIN=${{ matrix.neovim && 'nvim' || 'vim' }}
+
+  lint:
+    name: vint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # vint still imports pkg_resources, which is gone from newer
+          # Pythons and from setuptools 81+.
+          python-version: '3.12'
+      - run: pip install vim-vint 'setuptools<81'
+      - run: make lint

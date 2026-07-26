@@ -1,0 +1,41 @@
+{
+  "cmake": {
+    "version": {
+      "major": 3, "minor": 29, "patch": 2, "suffix": "",
+      "string": "3.29.2", "isDirty": false
+    },
+    "paths": {
+      "cmake": "/usr/bin/cmake",
+      "ctest": "/usr/bin/ctest",
+      "cpack": "/usr/bin/cpack",
+      "root": "/usr/share/cmake"
+    },
+    "generator": { "multiConfig": false, "name": "Unix Makefiles" }
+  },
+  "objects": [
+    {
+      "kind": "codemodel",
+      "version": { "major": 2, "minor": 6 },
+      "jsonFile": "codemodel-v2-abc.json"
+    },
+    {
+      "kind": "cmakeFiles",
+      "version": { "major": 1, "minor": 0 },
+      "jsonFile": "cmakeFiles-v1-def.json"
+    }
+  ],
+  "reply": {
+    "client-vim-cmake-project": {
+      "codemodel-v2": {
+        "kind": "codemodel",
+        "version": { "major": 2, "minor": 6 },
+        "jsonFile": "codemodel-v2-abc.json"
+      },
+      "cmakeFiles-v1": {
+        "kind": "cmakeFiles",
+        "version": { "major": 1, "minor": 0 },
+        "jsonFile": "cmakeFiles-v1-def.json"
+      }
+    }
+  }
+}

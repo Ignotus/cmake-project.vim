@@ -1,0 +1,30 @@
+{
+  "_comment": [
+    "A superseded index. CMake selects the index whose name is LARGEST in",
+    "lexicographic order, so this one must never be chosen. Its jsonFile",
+    "targets do not exist, so picking it fails loudly rather than silently."
+  ],
+  "cmake": {
+    "version": {
+      "major": 3, "minor": 20, "patch": 0, "suffix": "",
+      "string": "3.20.0", "isDirty": false
+    },
+    "generator": { "multiConfig": false, "name": "Unix Makefiles" }
+  },
+  "objects": [
+    {
+      "kind": "codemodel",
+      "version": { "major": 2, "minor": 2 },
+      "jsonFile": "codemodel-v2-STALE-DOES-NOT-EXIST.json"
+    }
+  ],
+  "reply": {
+    "client-vim-cmake-project": {
+      "codemodel-v2": {
+        "kind": "codemodel",
+        "version": { "major": 2, "minor": 2 },
+        "jsonFile": "codemodel-v2-STALE-DOES-NOT-EXIST.json"
+      }
+    }
+  }
+}

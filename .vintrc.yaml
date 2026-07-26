@@ -1,0 +1,11 @@
+cmdargs:
+  severity: style_problem
+  regexp_dialect: vim
+
+policies:
+  ProhibitImplicitScopeVariable:
+    enabled: true
+  ProhibitUsingUndeclaredVariable:
+    enabled: true
+  ProhibitUnnecessaryDoubleQuote:
+    enabled: false

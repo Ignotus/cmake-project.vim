@@ -1,0 +1,53 @@
+{
+  "kind": "codemodel",
+  "version": { "major": 2, "minor": 6 },
+  "paths": {
+    "source": "/fixture/src",
+    "build": "/fixture/build"
+  },
+  "configurations": [
+    {
+      "name": "Debug",
+      "directories": [
+        { "source": ".", "build": ".", "projectIndex": 0, "targetIndexes": [0, 1] }
+      ],
+      "projects": [
+        { "name": "fixture", "directoryIndexes": [0], "targetIndexes": [0, 1] }
+      ],
+      "targets": [
+        {
+          "name": "app",
+          "id": "app::@6890427a1f51a3e7e1df",
+          "directoryIndex": 0,
+          "projectIndex": 0,
+          "jsonFile": "target-app-Debug-1.json"
+        },
+        {
+          "name": "mylib",
+          "id": "mylib::@6890427a1f51a3e7e1df",
+          "directoryIndex": 0,
+          "projectIndex": 0,
+          "jsonFile": "target-mylib-Debug-2.json"
+        }
+      ]
+    },
+    {
+      "name": "Release",
+      "directories": [
+        { "source": ".", "build": ".", "projectIndex": 0, "targetIndexes": [0] }
+      ],
+      "projects": [
+        { "name": "fixture", "directoryIndexes": [0], "targetIndexes": [0] }
+      ],
+      "targets": [
+        {
+          "name": "mylib",
+          "id": "mylib::@6890427a1f51a3e7e1df",
+          "directoryIndex": 0,
+          "projectIndex": 0,
+          "jsonFile": "target-mylib-Release-3.json"
+        }
+      ]
+    }
+  ]
+}

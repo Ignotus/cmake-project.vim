@@ -1,0 +1,28 @@
+{
+  "kind": "cmakeFiles",
+  "version": { "major": 1, "minor": 0 },
+  "paths": {
+    "source": "/fixture/src",
+    "build": "/fixture/build"
+  },
+  "inputs": [
+    { "path": "CMakeLists.txt" },
+    { "path": "src/CMakeLists.txt" },
+    { "path": "cmake/FindFoo.cmake" },
+    {
+      "_comment": "shipped with CMake itself",
+      "path": "/usr/share/cmake/Modules/CMakeSystem.cmake",
+      "isCMake": true
+    },
+    {
+      "_comment": "written into the build tree by CMake",
+      "path": "/fixture/build/CMakeFiles/3.29.2/CMakeSystem.cmake",
+      "isGenerated": true
+    },
+    {
+      "_comment": "outside the source tree",
+      "path": "/somewhere/external/Config.cmake",
+      "isExternal": true
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+set nocompatible
+set nomore
+set noswapfile
+set viminfo=
+
+let s:root = expand('<sfile>:p:h:h')
+execute 'set runtimepath^=' . fnameescape(s:root)
+execute 'set runtimepath^=' . fnameescape(s:root . '/.deps/vader.vim')
+
+filetype plugin indent on
+syntax enable
+
+let g:cmakeproject_test_root = s:root

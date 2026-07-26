@@ -1,0 +1,6 @@
+/doc/tags
+/.deps/
+/build/
+/test/fixtures/project/build*/
+*.sw[a-p]
+tags

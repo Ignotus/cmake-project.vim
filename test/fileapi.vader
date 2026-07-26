@@ -1,0 +1,166 @@
+Execute (fixtures: locate them relative to the repo):
+  let g:fx = g:cmakeproject_test_root . '/test/fixtures'
+  let g:build = g:fx . '/buildtree'
+
+" ---------------------------------------------------------------- index_file
+
+Execute (index_file: picks the lexicographically largest index):
+  " index-0000-stale.json points at a codemodel that does not exist, so if
+  " selection ever regresses to mtime order the load tests below fail loudly.
+  AssertEqual 'index-ffff-current.json',
+        \ fnamemodify(cmakeproject#fileapi#index_file(g:build), ':t')
+
+Execute (index_file: returns empty when the reply directory has no index):
+  AssertEqual '', cmakeproject#fileapi#index_file(g:fx . '/emptyreply')
+
+Execute (index_file: returns empty when there is no reply directory at all):
+  AssertEqual '', cmakeproject#fileapi#index_file(g:fx . '/nonexistent')
+
+Execute (index_file: a trailing slash on the build path is tolerated):
+  AssertEqual 'index-ffff-current.json',
+        \ fnamemodify(cmakeproject#fileapi#index_file(g:build . '/'), ':t')
+
+" -------------------------------------------------------------------- lookup
+
+Execute (lookup: finds our own client's entry):
+  let g:index = {'reply': {'client-vim-cmake-project':
+        \ {'codemodel-v2': {'jsonFile': 'ours.json'}}}}
+  AssertEqual 'ours.json',
+        \ cmakeproject#fileapi#lookup(g:index, 'codemodel-v2')
+
+Execute (lookup: falls back to a shared top-level stateless reply):
+  let g:index = {'reply': {'codemodel-v2': {'jsonFile': 'shared.json'}}}
+  AssertEqual 'shared.json',
+        \ cmakeproject#fileapi#lookup(g:index, 'codemodel-v2')
+
+Execute (lookup: falls back to a foreign client):
+  let g:index = {'reply': {'client-cool-ide':
+        \ {'codemodel-v2': {'jsonFile': 'theirs.json'}}}}
+  AssertEqual 'theirs.json',
+        \ cmakeproject#fileapi#lookup(g:index, 'codemodel-v2')
+
+Execute (lookup: prefers our own client over a foreign one):
+  let g:index = {'reply': {
+        \ 'client-cool-ide': {'codemodel-v2': {'jsonFile': 'theirs.json'}},
+        \ 'client-vim-cmake-project': {'codemodel-v2': {'jsonFile': 'ours.json'}},
+        \ }}
+  AssertEqual 'ours.json',
+        \ cmakeproject#fileapi#lookup(g:index, 'codemodel-v2')
+
+Execute (lookup: returns empty for an absent kind):
+  let g:index = {'reply': {'client-vim-cmake-project':
+        \ {'codemodel-v2': {'jsonFile': 'ours.json'}}}}
+  AssertEqual '', cmakeproject#fileapi#lookup(g:index, 'cmakeFiles-v1')
+
+Execute (lookup: survives an index with no reply member):
+  AssertEqual '', cmakeproject#fileapi#lookup({}, 'codemodel-v2')
+
+Execute (lookup: survives an error stub in place of a jsonFile):
+  " CMake replaces the object with {'error': ...} when a query is unknown.
+  let g:index = {'reply': {'client-vim-cmake-project':
+        \ {'codemodel-v2': {'error': 'unknown query file'}}}}
+  AssertEqual '', cmakeproject#fileapi#lookup(g:index, 'codemodel-v2')
+
+" ---------------------------------------------------------------------- load
+
+Execute (load: reports the top-level source directory as the root):
+  let g:r = cmakeproject#fileapi#load(g:build)
+  AssertEqual '/fixture/src', g:r.root
+
+Execute (load: collects sources from every target in every configuration):
+  let g:r = cmakeproject#fileapi#load(g:build)
+  Assert index(g:r.paths, 'src/main.cpp') >= 0, 'app source missing'
+  Assert index(g:r.paths, 'src/lib/mylib.cpp') >= 0, 'Debug lib source missing'
+  Assert index(g:r.paths, 'src/lib/release_only.cpp') >= 0,
+        \ 'Release-only source missing -- configurations must be unioned'
+
+Execute (load: excludes generated sources):
+  let g:r = cmakeproject#fileapi#load(g:build)
+  AssertEqual -1, index(g:r.paths, 'src/generated/config.cpp')
+
+Execute (load: includes CMake input files):
+  let g:r = cmakeproject#fileapi#load(g:build)
+  Assert index(g:r.paths, 'CMakeLists.txt') >= 0
+  Assert index(g:r.paths, 'src/CMakeLists.txt') >= 0
+  Assert index(g:r.paths, 'cmake/FindFoo.cmake') >= 0
+
+Execute (load: excludes CMake's own, generated and external input files):
+  let g:r = cmakeproject#fileapi#load(g:build)
+  for g:bad in [
+        \ '/usr/share/cmake/Modules/CMakeSystem.cmake',
+        \ '/fixture/build/CMakeFiles/3.29.2/CMakeSystem.cmake',
+        \ '/somewhere/external/Config.cmake',
+        \ ]
+    AssertEqual -1, index(g:r.paths, g:bad), 'should be filtered: ' . g:bad
+  endfor
+
+Execute (load: passes out-of-tree sources through for the tree to reject):
+  let g:r = cmakeproject#fileapi#load(g:build)
+  Assert index(g:r.paths, '/usr/include/external/ext.h') >= 0
+
+Execute (load: end to end, the tree contains exactly the expected files):
+  let g:r = cmakeproject#fileapi#load(g:build)
+  let g:t = cmakeproject#tree#build(g:r.root, g:r.paths)
+  let g:f = cmakeproject#tree#flatten(g:t, {}, cmakeproject#tree#default_opts())
+  AssertEqual [
+        \ '-cmake',
+        \ '    FindFoo.cmake',
+        \ '-include',
+        \ '   -mylib',
+        \ '       mylib.h',
+        \ '-src',
+        \ '   -app',
+        \ '       window.cpp',
+        \ '       window.h',
+        \ '   -lib',
+        \ '       mylib.cpp',
+        \ '       release_only.cpp',
+        \ '    CMakeLists.txt',
+        \ '    main.cpp',
+        \ ' CMakeLists.txt',
+        \ ], g:f.lines
+
+Execute (load: duplicated sources across configurations collapse to one):
+  let g:r = cmakeproject#fileapi#load(g:build)
+  let g:t = cmakeproject#tree#build(g:r.root, g:r.paths)
+  AssertEqual 1, len(filter(copy(g:t.dirs.src.dirs.lib.files),
+        \ 'v:val.name ==# "mylib.cpp"'))
+
+Execute (load: works against a build tree configured by another tool):
+  let g:r = cmakeproject#fileapi#load(g:fx . '/foreign')
+  AssertEqual '/foreign/src', g:r.root
+  AssertEqual ['foreign.cpp'], g:r.paths
+
+" -------------------------------------------------------------- error paths
+
+Execute (load: a missing build directory is reported, not crashed on):
+  AssertThrows call cmakeproject#fileapi#load(g:fx . '/nonexistent')
+  Assert g:vader_exception =~# '^cmake-project: no such build directory',
+        \ 'got: ' . g:vader_exception
+
+Execute (load: a reply directory with no index tells the user what to run):
+  AssertThrows call cmakeproject#fileapi#load(g:fx . '/emptyreply')
+  Assert g:vader_exception =~# '^cmake-project: no File API reply',
+        \ 'got: ' . g:vader_exception
+  Assert g:vader_exception =~# ':CMakeGen', 'should name the fix'
+
+Execute (load: malformed JSON is reported with the offending file):
+  AssertThrows call cmakeproject#fileapi#load(g:fx . '/badjson')
+  Assert g:vader_exception =~# '^cmake-project: invalid JSON in',
+        \ 'got: ' . g:vader_exception
+
+" ---------------------------------------------------------------- write_query
+
+Execute (write_query: creates both stateless query files):
+  let g:tmp = tempname()
+  call mkdir(g:tmp, 'p')
+  call cmakeproject#fileapi#write_query(g:tmp)
+  let g:qdir = g:tmp . '/.cmake/api/v1/query/client-vim-cmake-project'
+  Assert filereadable(g:qdir . '/codemodel-v2'), 'codemodel query missing'
+  Assert filereadable(g:qdir . '/cmakeFiles-v1'), 'cmakeFiles query missing'
+
+Execute (write_query: is idempotent):
+  call cmakeproject#fileapi#write_query(g:tmp)
+  call cmakeproject#fileapi#write_query(g:tmp)
+  AssertEqual [], readfile(g:qdir . '/codemodel-v2')
+  call delete(g:tmp, 'rf')
