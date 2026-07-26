@@ -4,3 +4,4 @@
 /test/fixtures/project/build*/
 *.sw[a-p]
 tags
+.DS_Store

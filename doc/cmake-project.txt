@@ -2,7 +2,7 @@
 
 Author:         Minh Ngo <minh@fedoraproject.org>
 Licence:        MIT
-Homepage:       http://github.com/Ignotus/vim-cmake-project
+Homepage:       http://github.com/Ignotus/cmake-project.vim
 Version:        3.0.0
 
 ==============================================================================
@@ -84,20 +84,20 @@ rendered files first and folders in hash order.
 
 With vim-plug: >
 
-    Plug 'Ignotus/vim-cmake-project'
+    Plug 'Ignotus/cmake-project.vim'
 <
 With lazy.nvim: >
 
-    { 'Ignotus/vim-cmake-project', cmd = { 'CMakeGen', 'CMakeBar' } }
+    { 'Ignotus/cmake-project.vim', cmd = { 'CMakeGen', 'CMakeBar' } }
 <
 With packer.nvim: >
 
-    use 'Ignotus/vim-cmake-project'
+    use 'Ignotus/cmake-project.vim'
 <
 With Vim's built-in package support: >
 
-    git clone https://github.com/Ignotus/vim-cmake-project \
-        ~/.vim/pack/plugins/start/vim-cmake-project
+    git clone https://github.com/Ignotus/cmake-project.vim \
+        ~/.vim/pack/plugins/start/cmake-project.vim
 <
 Or from a checkout: >
 

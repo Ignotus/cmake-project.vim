@@ -37,26 +37,26 @@ Installing
 With [vim-plug](https://github.com/junegunn/vim-plug):
 
 ```vim
-Plug 'Ignotus/vim-cmake-project'
+Plug 'Ignotus/cmake-project.vim'
 ```
 
 With [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
-{ 'Ignotus/vim-cmake-project', cmd = { 'CMakeGen', 'CMakeBar' } }
+{ 'Ignotus/cmake-project.vim', cmd = { 'CMakeGen', 'CMakeBar' } }
 ```
 
 With [packer.nvim](https://github.com/wbthomason/packer.nvim):
 
 ```lua
-use 'Ignotus/vim-cmake-project'
+use 'Ignotus/cmake-project.vim'
 ```
 
 With Vim's built-in package support:
 
 ```sh
-git clone https://github.com/Ignotus/vim-cmake-project \
-    ~/.vim/pack/plugins/start/vim-cmake-project
+git clone https://github.com/Ignotus/cmake-project.vim \
+    ~/.vim/pack/plugins/start/cmake-project.vim
 ```
 
 Or from a checkout:

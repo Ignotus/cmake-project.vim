@@ -2,8 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [master, v3-rewrite]
+    branches: [master]
   pull_request:
+  # Lets release.yml gate a tag on this exact matrix instead of a copy of it.
+  workflow_call:
 
 jobs:
   test:

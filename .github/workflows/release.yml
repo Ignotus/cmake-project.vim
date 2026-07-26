@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # Reuses the CI matrix verbatim, so a tag can only ship if the full test
+  # suite is green on every supported Vim and Neovim.
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # This repository has shipped mismatched versions before (README said
+      # 2.0.1 while doc/cmake-project.txt said 2.0.0). Fail the release rather
+      # than publish another one.
+      - name: Check the tag matches the documented version
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          doc_version="$(awk '/^Version:/ { print $2; exit }' doc/cmake-project.txt)"
+          echo "tag: $tag_version   doc: $doc_version"
+          if [ "$tag_version" != "$doc_version" ]; then
+            echo "::error file=doc/cmake-project.txt::Tag ${GITHUB_REF_NAME} does not match the documented version ${doc_version}"
+            exit 1
+          fi
+
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          version: stable
+
+      - name: Check the help file still generates tags
+        run: |
+          set -euo pipefail
+          vim -Nu NONE -i NONE -es -c 'helptags doc' -c q
+          test -s doc/tags
+
+      # Prefer the hand-written History section from the help file; fall back
+      # to GitHub's generated notes when this version has no entry.
+      - name: Build release notes
+        id: notes
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          awk -v want="$version" '
+            $0 ~ "^" want "([ \t]|$)" { found = 1; next }
+            found && /^[0-9]+\.[0-9]+\.[0-9]+/ { exit }
+            found && /^={10,}/ { exit }
+            found { print }
+          ' doc/cmake-project.txt \
+            | sed -e 's/^    //' -e 's/|\([^|]*\)|/`\1`/g' > notes.md
+          if [ -s notes.md ]; then
+            echo "generate=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "generate=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo '--- notes.md ---'; cat notes.md
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          prerelease=''
+          case "$GITHUB_REF_NAME" in
+            *-*) prerelease='--prerelease' ;;
+          esac
+          if [ "${{ steps.notes.outputs.generate }}" = "true" ]; then
+            gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" --generate-notes $prerelease
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" --notes-file notes.md $prerelease
+          fi
