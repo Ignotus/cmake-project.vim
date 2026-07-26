@@ -5,7 +5,7 @@ CMake project management plugin for the VIM editor. It provides a sidebar
 showing your project's files in a tree view, built from what CMake actually
 knows about the project rather than from a directory scan.
 
-[![VCP](http://i.imgur.com/wGeVbl.png)](http://i.imgur.com/wGeVbl.png)
+[![VCP](screenshot.png)](screenshot.png)
 
 Breaking changes in 3.0
 -----------------------
